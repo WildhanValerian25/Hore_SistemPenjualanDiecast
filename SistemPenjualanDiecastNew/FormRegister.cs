@@ -110,4 +110,58 @@ namespace SistemPenjualanDiecastNew
             this.ResumeLayout(false);
         }
 
-       
+        // EVENT REGISTER
+        private void btnRegister_Click(object sender, EventArgs e)
+        {
+            if (txtNama.Text == "" || txtUsername.Text == "" || txtPassword.Text == "" || txtConfirm.Text == "")
+            {
+                MessageBox.Show("Semua field wajib diisi!");
+                return;
+            }
+
+            if (txtPassword.Text != txtConfirm.Text)
+            {
+                MessageBox.Show("Password tidak sama!");
+                return;
+            }
+
+            string connStr = "Data Source=LAPTOP-24A5CGHI\\WILDHANFIGHT;Initial Catalog=DiecastDB;Integrated Security=True";
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open(); // 🔥 WAJIB DI SINI
+
+                    string query = "INSERT INTO Users (Nama, Username, Password, Role) VALUES (@nama, @username, @password, @role)";
+                    SqlCommand cmd = new SqlCommand(query, conn);
+
+                    cmd.Parameters.AddWithValue("@nama", txtNama.Text);
+                    cmd.Parameters.AddWithValue("@username", txtUsername.Text);
+                    cmd.Parameters.AddWithValue("@password", txtPassword.Text);
+                    cmd.Parameters.AddWithValue("@role", "User"); // default user
+
+                    cmd.ExecuteNonQuery();
+
+                    MessageBox.Show("Registrasi berhasil!");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error register: " + ex.Message);
+                }
+            }
+
+            Form1 login = new Form1();
+            login.Show();
+            this.Close();
+        }
+
+        // EVENT BACK
+        private void btnBack_Click(object sender, EventArgs e)
+        {
+            Form1 login = new Form1();
+            login.Show();
+            this.Close();
+        }
+    }
+}
