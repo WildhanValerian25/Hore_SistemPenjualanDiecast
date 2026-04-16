@@ -218,4 +218,81 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
-        
+        private Label CreateLabel(string text, int top)
+        {
+            return new Label() { Text = text, Location = new Point(30, top), AutoSize = true, Font = new Font("Segoe UI", 9) };
+        }
+
+        private void LoadUserData()
+        {
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                conn.Open();
+                string query = "SELECT Username, Email, Alamat, NoHP FROM Users WHERE Username = @u";
+                SqlCommand cmd = new SqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@u", _username);
+                SqlDataReader r = cmd.ExecuteReader();
+                if (r.Read())
+                {
+                    lblUsername.Text = "Username: " + r["Username"].ToString();
+                    lblEmail.Text = "Email: " + r["Email"].ToString();
+                    lblAlamat.Text = "Alamat: " + r["Alamat"].ToString();
+                    lblNoHP.Text = "No HP: " + r["NoHP"].ToString();
+                }
+            }
+        }
+
+        private void LoadProductData()
+        {
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    string query = "SELECT Nama_Diecast, Harga, Stok FROM Produk WHERE Stok > 0";
+                    SqlDataAdapter da = new SqlDataAdapter(query, conn);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+                    dgvProducts.DataSource = dt;
+                    if (dgvProducts.Columns.Contains("Harga"))
+                        dgvProducts.Columns["Harga"].DefaultCellStyle.Format = "N0";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Gagal memuat produk: " + ex.Message);
+                }
+            }
+        }
+
+        private void UpdateDana(int jumlah)
+        {
+            _currentSaldo += jumlah;
+            UpdateSaldoLabel();
+        }
+
+        private void UpdateSaldoLabel()
+        {
+            lblSaldo.Text = "Saldo: Rp " + _currentSaldo.ToString("N0");
+        }
+
+        private void BtnBuy_Click(object sender, EventArgs e)
+        {
+            if (dgvProducts.SelectedRows.Count > 0)
+            {
+                string nama = dgvProducts.SelectedRows[0].Cells["Nama_Diecast"].Value.ToString();
+                int harga = Convert.ToInt32(dgvProducts.SelectedRows[0].Cells["Harga"].Value);
+
+                if (_currentSaldo >= harga)
+                {
+                    MessageBox.Show($"Berhasil membeli {nama}!", "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    _currentSaldo -= harga;
+                    UpdateSaldoLabel();
+                }
+                else
+                {
+                    MessageBox.Show("Saldo tidak cukup!", "Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+        }
+    }
+}
