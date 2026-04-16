@@ -22,13 +22,4 @@ namespace SistemPenjualanDiecastNew
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.White;
 
-            lblWelcome = new Label();
-            lblWelcome.Text = "Welcome, " + username;
-            lblWelcome.Font = new Font("Segoe UI", 16, FontStyle.Bold);
-            lblWelcome.AutoSize = true;
-            lblWelcome.Location = new Point(30, 30);
-
-            this.Controls.Add(lblWelcome);
-        }
-    } 
-}
+            
