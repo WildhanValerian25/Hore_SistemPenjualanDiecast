@@ -14,14 +14,6 @@ namespace SistemPenjualanDiecastNew
         LinkLabel linkRegister;
 
         // Baris 15: Variabel Koneksi Global (Agar tidak ada warning CS0414)
-        string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=DiecastDB;Integrated Security=True";
-
-        public Form1()
-        {
-            InitializeComponent();
-
-            // Menghubungkan LinkLabel ke method-nya
-            linkRegister.LinkClicked += LinkRegister_LinkClicked;
-        }
+        string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=DiecastDB;Integrated Security=True"; // Menambahkan koneksi string database
 
        
