@@ -78,5 +78,10 @@ namespace SistemPenjualanDiecastNew
             // Memastikan nama Event Handler sesuai (untuk mencegah Error CS0103)
             this.btnLogin.Click += new System.EventHandler(this.btnLogin_Click);
 
-            
+            // linkRegister
+            this.linkRegister.AutoSize = true;
+            this.linkRegister.Location = new System.Drawing.Point(330, 260);
+            this.linkRegister.Name = "linkRegister";
+            this.linkRegister.Text = "Belum memiliki akun?";
 
+            
