@@ -84,4 +84,21 @@ namespace SistemPenjualanDiecastNew
             this.linkRegister.Name = "linkRegister";
             this.linkRegister.Text = "Belum memiliki akun?";
 
-            
+            // Form1 Settings
+            this.BackColor = System.Drawing.Color.LightGray;
+            this.ClientSize = new System.Drawing.Size(888, 323);
+            this.Controls.Add(this.lblTitle);
+            this.Controls.Add(this.lblUsername);
+            this.Controls.Add(this.txtUsername);
+            this.Controls.Add(this.lblPassword);
+            this.Controls.Add(this.txtPassword);
+            this.Controls.Add(this.btnLogin);
+            this.Controls.Add(this.linkRegister);
+            this.Name = "Form1";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "Login";
+            this.ResumeLayout(false);
+            this.PerformLayout();
+        }
+
+       
