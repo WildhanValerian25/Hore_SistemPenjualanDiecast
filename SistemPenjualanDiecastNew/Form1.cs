@@ -50,4 +50,9 @@ namespace SistemPenjualanDiecastNew
             this.lblUsername.Name = "lblUsername";
             this.lblUsername.Text = "Username";
 
+            // lblPassword
+            this.lblPassword.Location = new System.Drawing.Point(200, 160);
+            this.lblPassword.Name = "lblPassword";
+            this.lblPassword.Text = "Password";
+
             
