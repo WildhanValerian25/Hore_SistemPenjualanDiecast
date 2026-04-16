@@ -75,4 +75,8 @@ namespace SistemPenjualanDiecastNew
             this.btnLogin.Text = "Login";
             this.btnLogin.UseVisualStyleBackColor = false;
 
-           
+            // Memastikan nama Event Handler sesuai (untuk mencegah Error CS0103)
+            this.btnLogin.Click += new System.EventHandler(this.btnLogin_Click);
+
+            
+
