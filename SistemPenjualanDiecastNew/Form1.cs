@@ -151,4 +151,12 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
-       
+        private void LinkRegister_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            FormRegister r = new FormRegister();
+            r.Show();
+            this.Hide();
+        }
+    }
+}
+
