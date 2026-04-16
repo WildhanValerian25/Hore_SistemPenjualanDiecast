@@ -101,4 +101,54 @@ namespace SistemPenjualanDiecastNew
             this.PerformLayout();
         }
 
+        private void btnLogin_Click(object sender, EventArgs e)
+        {
+            // Menggunakan 'this.connStr' dari baris 15
+            using (SqlConnection conn = new SqlConnection(this.connStr))
+            {
+                try
+                {
+                    conn.Open();
+
+                    // Query yang disesuaikan agar tidak error "Invalid column name Role"
+                    // Pastikan di SQL Server kamu sudah menjalankan: ALTER TABLE Users ADD Role VARCHAR(20);
+                    string query = "SELECT username, Role FROM Users WHERE username = @u AND password = @p";
+
+                    SqlCommand cmd = new SqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@u", txtUsername.Text);
+                    cmd.Parameters.AddWithValue("@p", txtPassword.Text);
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        string dbUsername = reader["username"].ToString();
+                        string role = reader["Role"].ToString().ToLower().Trim();
+                        reader.Close();
+
+                        if (role == "admin")
+                        {
+                            FormAdminDashboard adminDashboard = new FormAdminDashboard(role);
+                            adminDashboard.Show();
+                        }
+                        else
+                        {
+                            FormUser userDashboard = new FormUser(dbUsername);
+                            userDashboard.Show();
+                        }
+                        this.Hide();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Username atau Password salah!", "Akses Ditolak", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Menangkap error jika kolom 'Role' masih belum ada di database
+                    MessageBox.Show("Gagal terhubung ke database!\n" + ex.Message, "Error Koneksi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
        
