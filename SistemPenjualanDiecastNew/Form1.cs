@@ -55,4 +55,24 @@ namespace SistemPenjualanDiecastNew
             this.lblPassword.Name = "lblPassword";
             this.lblPassword.Text = "Password";
 
-            
+            // txtUsername
+            this.txtUsername.Location = new System.Drawing.Point(320, 120);
+            this.txtUsername.Name = "txtUsername";
+            this.txtUsername.Size = new System.Drawing.Size(200, 22);
+
+            // txtPassword
+            this.txtPassword.Location = new System.Drawing.Point(320, 160);
+            this.txtPassword.Name = "txtPassword";
+            this.txtPassword.Size = new System.Drawing.Size(200, 22);
+            this.txtPassword.UseSystemPasswordChar = true;
+
+            // btnLogin
+            this.btnLogin.BackColor = System.Drawing.Color.Gold;
+            this.btnLogin.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnLogin.Location = new System.Drawing.Point(340, 210);
+            this.btnLogin.Name = "btnLogin";
+            this.btnLogin.Size = new System.Drawing.Size(75, 35);
+            this.btnLogin.Text = "Login";
+            this.btnLogin.UseVisualStyleBackColor = false;
+
+           
