@@ -25,6 +25,14 @@ namespace SistemPenjualanDiecastNew
         // menghubungkan LinkLabel register dengan event handler
 
         linkRegister.LinkClicked += LinkRegister_LinkClicked;
-        } 
-
-       
+        }
+        private void InitializeComponent()  //  implement basic login UI layout
+        {
+            this.lblTitle = new System.Windows.Forms.Label();
+            this.lblUsername = new System.Windows.Forms.Label();
+            this.lblPassword = new System.Windows.Forms.Label();
+            this.txtUsername = new System.Windows.Forms.TextBox();
+            this.txtPassword = new System.Windows.Forms.TextBox();
+            this.btnLogin = new System.Windows.Forms.Button();
+            this.linkRegister = new System.Windows.Forms.LinkLabel();
+            
