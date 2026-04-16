@@ -45,4 +45,9 @@ namespace SistemPenjualanDiecastNew
             this.lblTitle.Size = new System.Drawing.Size(159, 37);
             this.lblTitle.Text = "Login Page";
 
-           
+            // lblUsername
+            this.lblUsername.Location = new System.Drawing.Point(200, 120);
+            this.lblUsername.Name = "lblUsername";
+            this.lblUsername.Text = "Username";
+
+            
