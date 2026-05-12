@@ -100,5 +100,81 @@ namespace SistemPenjualanDiecastNew
             this.ResumeLayout(false);
             this.PerformLayout();
         }
+        private void btnLogin_Click(object sender, EventArgs e)
+        {
+            if (txtUsername.Text == "" || txtPassword.Text == "")
+            {
+                MessageBox.Show("Username dan Password wajib diisi!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-       
+            string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+
+                    // ✅ Login PELANGGAN pakai Stored Procedure
+                    SqlCommand cmdPelanggan = new SqlCommand("sp_LoginPelanggan", conn);
+                    cmdPelanggan.CommandType = CommandType.StoredProcedure;
+                    cmdPelanggan.Parameters.AddWithValue("@username", txtUsername.Text);
+                    cmdPelanggan.Parameters.AddWithValue("@password", txtPassword.Text);
+                    SqlDataReader reader = cmdPelanggan.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        string userLogin = reader["username"].ToString();
+                        reader.Close();
+
+                        FormUser userDashboard = new FormUser(userLogin);
+                        userDashboard.Show();
+                        this.Hide();
+                    }
+                    else
+                    {
+                        reader.Close();
+
+                        // ✅ Login ADMIN pakai Stored Procedure
+                        SqlCommand cmdAdmin = new SqlCommand("sp_LoginAdmin", conn);
+                        cmdAdmin.CommandType = CommandType.StoredProcedure;
+                        cmdAdmin.Parameters.AddWithValue("@username", txtUsername.Text);
+                        cmdAdmin.Parameters.AddWithValue("@password", txtPassword.Text);
+                        SqlDataReader readerAdmin = cmdAdmin.ExecuteReader();
+
+                        if (readerAdmin.Read())
+                        {
+                            string adminLogin = readerAdmin["username"].ToString();
+                            readerAdmin.Close();
+
+                            FormAdminDashboard adminDashboard = new FormAdminDashboard(adminLogin);
+                            adminDashboard.Show();
+                            this.Hide();
+                        }
+                        else
+                        {
+                            readerAdmin.Close();
+                            MessageBox.Show("Username atau Password salah!", "Akses Ditolak",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Gagal terhubung ke database!\n" + ex.Message, "Error Koneksi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void LinkRegister_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            FormRegister r = new FormRegister();
+            r.Show();
+            this.Hide();
+        }
+    }
+}
+
