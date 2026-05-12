@@ -148,4 +148,112 @@ namespace SistemPenjualanDiecastNew
             this.ResumeLayout(false);
         }
 
-        
+        private void btnRegister_Click(object sender, EventArgs e)
+        {
+            // ✅ Validasi semua field wajib diisi termasuk yang baru
+            if (txtNama.Text == "" || txtUsername.Text == "" ||
+                txtPassword.Text == "" || txtConfirm.Text == "" ||
+                txtEmail.Text == "" || txtAlamat.Text == "" ||
+                txtNoHP.Text == "")
+            {
+                MessageBox.Show("Semua field wajib diisi!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Validasi username tidak boleh ada spasi
+            if (txtUsername.Text.Contains(" "))
+            {
+                MessageBox.Show("Username tidak boleh mengandung spasi!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // ✅ Validasi format email
+            if (!txtEmail.Text.Contains("@") || !txtEmail.Text.Contains("."))
+            {
+                MessageBox.Show("Format email tidak valid! Contoh: nama@email.com", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Validasi password sama
+            if (txtPassword.Text.Length < 8)
+            {
+                MessageBox.Show("Password minimal 8 karakter!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+
+                    // Cek username sudah terdaftar atau belum
+                    string cekQuery = "SELECT COUNT(*) FROM PELANGGAN WHERE [username] = @username";
+                    SqlCommand cekCmd = new SqlCommand(cekQuery, conn);
+                    cekCmd.Parameters.AddWithValue("@username", txtUsername.Text);
+                    int sudahAda = (int)cekCmd.ExecuteScalar();
+
+                    if (sudahAda > 0)
+                    {
+                        MessageBox.Show("Username sudah terdaftar, gunakan username lain!", "Peringatan",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // ✅ Cek email sudah terdaftar atau belum
+                    string cekEmail = "SELECT COUNT(*) FROM PELANGGAN WHERE email = @email";
+                    SqlCommand cekEmailCmd = new SqlCommand(cekEmail, conn);
+                    cekEmailCmd.Parameters.AddWithValue("@email", txtEmail.Text);
+                    int emailAda = (int)cekEmailCmd.ExecuteScalar();
+
+                    if (emailAda > 0)
+                    {
+                        MessageBox.Show("Email sudah terdaftar, gunakan email lain!", "Peringatan",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // ✅ INSERT lengkap dengan email, alamat, no_telepon
+                    string query = @"INSERT INTO PELANGGAN 
+                                        (nama, [username], password, email, no_telepon, alamat) 
+                                     VALUES 
+                                        (@nama, @username, @password, @email, @notelp, @alamat)";
+                    SqlCommand cmd = new SqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@nama", txtNama.Text);
+                    cmd.Parameters.AddWithValue("@username", txtUsername.Text);
+                    cmd.Parameters.AddWithValue("@password", txtPassword.Text);
+                    cmd.Parameters.AddWithValue("@email", txtEmail.Text);   // ✅
+                    cmd.Parameters.AddWithValue("@notelp", txtNoHP.Text);    // ✅
+                    cmd.Parameters.AddWithValue("@alamat", txtAlamat.Text);  // ✅
+
+                    cmd.ExecuteNonQuery();
+
+                    MessageBox.Show("Registrasi berhasil! Silakan login.", "Sukses",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    Form1 login = new Form1();
+                    login.Show();
+                    this.Close();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error register: " + ex.Message, "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void btnBack_Click(object sender, EventArgs e)
+        {
+            Form1 login = new Form1();
+            login.Show();
+            this.Close();
+        }
+    }
+}
