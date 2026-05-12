@@ -136,4 +136,104 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
-        
+        private void BtnSimpan_Click(object sender, EventArgs e)
+        {
+            string statusBaru = cmbStatusBaru.SelectedItem.ToString();
+
+            // Validasi resi wajib diisi jika status Dikirim
+            if (statusBaru == "Dikirim" && (txtResi.Text.Trim() == "" || txtResi.Text == placeholder))
+            {
+                MessageBox.Show("Nomor resi wajib diisi jika status Dikirim!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // ✅ Pesan konfirmasi sesuai status yang dipilih
+            string pesanKonfirmasi;
+            if (statusBaru == "Dibatalkan")
+                pesanKonfirmasi = $"Yakin ingin MEMBATALKAN pesanan #{_idPesanan}?\nStatus pesanan akan menjadi 'Dibatalkan' dan stok dikembalikan.";
+            else if (statusBaru == "Dikirim")
+                pesanKonfirmasi = $"Yakin mengubah status pesanan #{_idPesanan} menjadi 'Dikirim'?\nPastikan nomor resi sudah benar.";
+            else
+                pesanKonfirmasi = $"Yakin mengubah status pesanan #{_idPesanan} menjadi '{statusBaru}'?";
+
+            DialogResult konfirmasi = MessageBox.Show(pesanKonfirmasi, "Konfirmasi",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (konfirmasi != DialogResult.Yes) return;
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                SqlTransaction trans = null;
+                try
+                {
+                    conn.Open();
+                    trans = conn.BeginTransaction();
+
+                    // Update status pesanan + nomor resi
+                    string qPesanan = @"UPDATE PESANAN 
+                                SET status_pesanan = @status,
+                                    nomor_resi     = @resi
+                                WHERE id_pesanan   = @id";
+                    SqlCommand cmdPesanan = new SqlCommand(qPesanan, conn, trans);
+                    cmdPesanan.Parameters.AddWithValue("@status", statusBaru);
+                    cmdPesanan.Parameters.AddWithValue("@resi",
+                        txtResi.Text.Trim() == "" || txtResi.Text == placeholder
+                            ? (object)DBNull.Value
+                            : txtResi.Text.Trim());
+                    cmdPesanan.Parameters.AddWithValue("@id", _idPesanan);
+                    cmdPesanan.ExecuteNonQuery();
+
+                    // Update status pembayaran jika Selesai
+                    if (statusBaru == "Selesai")
+                    {
+                        string qBayar = @"UPDATE PEMBAYARAN 
+                                  SET status_bayar  = 'Lunas',
+                                      tanggal_bayar = GETDATE()
+                                  WHERE id_pesanan  = @id";
+                        SqlCommand cmdBayar = new SqlCommand(qBayar, conn, trans);
+                        cmdBayar.Parameters.AddWithValue("@id", _idPesanan);
+                        cmdBayar.ExecuteNonQuery();
+                    }
+
+                    // Kembalikan stok jika Dibatalkan
+                    if (statusBaru == "Dibatalkan")
+                    {
+                        string qStok = @"UPDATE p
+                                 SET p.stok = p.stok + dp.jumlah
+                                 FROM PRODUK p
+                                 INNER JOIN DETAIL_PESANAN dp ON p.id_produk = dp.id_produk
+                                 WHERE dp.id_pesanan = @id";
+                        SqlCommand cmdStok = new SqlCommand(qStok, conn, trans);
+                        cmdStok.Parameters.AddWithValue("@id", _idPesanan);
+                        cmdStok.ExecuteNonQuery();
+
+                        // ✅ Update status pembayaran → Gagal jika dibatalkan
+                        string qBayarBatal = @"UPDATE PEMBAYARAN 
+                                       SET status_bayar  = 'Gagal',
+                                           tanggal_bayar = GETDATE()
+                                       WHERE id_pesanan  = @id";
+                        SqlCommand cmdBayarBatal = new SqlCommand(qBayarBatal, conn, trans);
+                        cmdBayarBatal.Parameters.AddWithValue("@id", _idPesanan);
+                        cmdBayarBatal.ExecuteNonQuery();
+                    }
+
+                    trans.Commit();
+
+                    MessageBox.Show(
+                        $"Status pesanan #{_idPesanan} berhasil diubah ke '{statusBaru}'!",
+                        "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    this.DialogResult = DialogResult.OK;
+                    this.Close();
+                }
+                catch (Exception ex)
+                {
+                    trans?.Rollback();
+                    MessageBox.Show("Gagal update pesanan: " + ex.Message, "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+    }
+}
