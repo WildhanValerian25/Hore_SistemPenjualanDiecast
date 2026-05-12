@@ -195,4 +195,98 @@ namespace SistemPenjualanDiecastNew
             else dgvStok.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.FromArgb(212, 237, 218);
         }
 
-        
+        private void BtnCari_Click(object sender, EventArgs e)
+        {
+            LoadStok(txtCari.Text.Trim());
+        }
+
+        private void BtnTambahStok_Click(object sender, EventArgs e)
+        {
+            UbahStok(true);
+        }
+
+        private void BtnKurangiStok_Click(object sender, EventArgs e)
+        {
+            UbahStok(false);
+        }
+
+        private void UbahStok(bool tambah)
+        {
+            if (dgvStok.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Pilih produk terlebih dahulu!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int idProduk = Convert.ToInt32(dgvStok.SelectedRows[0].Cells["ID"].Value);
+            string namaProduk = dgvStok.SelectedRows[0].Cells["Nama Produk"].Value.ToString();
+            int stokSaatIni = Convert.ToInt32(dgvStok.SelectedRows[0].Cells["Stok"].Value);
+            string aksi = tambah ? "tambahkan" : "kurangi";
+
+            // Dialog input jumlah
+            Form dialog = new Form()
+            {
+                Text = tambah ? "Tambah Stok" : "Kurangi Stok",
+                Size = new Size(380, 200),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                BackColor = Color.White
+            };
+
+            Label lbl = new Label() { Text = $"Jumlah stok yang ingin di{aksi}:\n{namaProduk}\n(Stok saat ini: {stokSaatIni})", Font = new Font("Segoe UI", 9), Location = new Point(20, 15), AutoSize = true };
+            TextBox txtJ = new TextBox() { Location = new Point(20, 85), Width = 200, Font = new Font("Segoe UI", 11) };
+            Button btnOk = new Button() { Text = "OK", Location = new Point(20, 120), Size = new Size(100, 35), BackColor = tambah ? Color.DarkGreen : Color.DarkOrange, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.OK };
+            Button btnBtl = new Button() { Text = "Batal", Location = new Point(130, 120), Size = new Size(80, 35), FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.Cancel };
+
+            dialog.Controls.AddRange(new Control[] { lbl, txtJ, btnOk, btnBtl });
+            dialog.AcceptButton = btnOk;
+            dialog.CancelButton = btnBtl;
+
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                if (!int.TryParse(txtJ.Text, out int jumlah) || jumlah <= 0)
+                {
+                    MessageBox.Show("Masukkan angka yang valid!", "Peringatan",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (!tambah && jumlah > stokSaatIni)
+                {
+                    MessageBox.Show($"Stok tidak cukup! Stok saat ini: {stokSaatIni}", "Peringatan",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                using (SqlConnection conn = new SqlConnection(connStr))
+                {
+                    try
+                    {
+                        conn.Open();
+                        string sql = tambah
+                            ? "UPDATE PRODUK SET stok = stok + @jml WHERE id_produk = @id"
+                            : "UPDATE PRODUK SET stok = stok - @jml WHERE id_produk = @id";
+
+                        SqlCommand cmd = new SqlCommand(sql, conn);
+                        cmd.Parameters.AddWithValue("@jml", jumlah);
+                        cmd.Parameters.AddWithValue("@id", idProduk);
+                        cmd.ExecuteNonQuery();
+
+                        MessageBox.Show(
+                            $"Stok '{namaProduk}' berhasil {(tambah ? "ditambah" : "dikurangi")} {jumlah}!",
+                            "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        LoadStok(txtCari.Text.Trim());
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Gagal ubah stok: " + ex.Message, "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+    }
+}
