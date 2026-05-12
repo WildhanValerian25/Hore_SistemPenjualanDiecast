@@ -33,6 +33,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -52,10 +53,31 @@
     <Compile Include="FormAdminDashboard.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="FormAdminPembayaran.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormAdminPesanan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormAdminStok.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormBeli.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FormCompleteProfile.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="FormKonfirmasiResi.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormPembayaran.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FormRegister.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormRiwayatPesanan.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormUser.cs">
