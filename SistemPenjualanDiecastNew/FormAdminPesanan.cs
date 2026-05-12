@@ -201,4 +201,139 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
-        
+        private void BtnKonfirmasi_Click(object sender, EventArgs e)
+        {
+            if (dgvPesanan.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Pilih pesanan terlebih dahulu!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int idPesanan = Convert.ToInt32(dgvPesanan.SelectedRows[0].Cells["ID Pesanan"].Value);
+            string statusSaat = dgvPesanan.SelectedRows[0].Cells["Status"].Value.ToString();
+            string namaPembeli = dgvPesanan.SelectedRows[0].Cells["Nama Pembeli"].Value.ToString();
+            string namaProduk = dgvPesanan.SelectedRows[0].Cells["Produk"].Value.ToString();
+
+            if (statusSaat == "Selesai" || statusSaat == "Dibatalkan")
+            {
+                MessageBox.Show($"Pesanan sudah berstatus '{statusSaat}', tidak bisa diubah lagi.", "Info",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            FormKonfirmasiResi formResi = new FormKonfirmasiResi(idPesanan, statusSaat, namaPembeli, namaProduk);
+            if (formResi.ShowDialog() == DialogResult.OK)
+                LoadPesanan();
+        }
+
+        private void BtnTolak_Click(object sender, EventArgs e)
+        {
+            if (dgvPesanan.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Pilih pesanan terlebih dahulu!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int idPesanan = Convert.ToInt32(dgvPesanan.SelectedRows[0].Cells["ID Pesanan"].Value);
+            string statusSaat = dgvPesanan.SelectedRows[0].Cells["Status"].Value.ToString();
+            string statusBayar = dgvPesanan.SelectedRows[0].Cells["Status Bayar"].Value?.ToString();
+            string namaPembeli = dgvPesanan.SelectedRows[0].Cells["Nama Pembeli"].Value.ToString();
+            string namaProduk = dgvPesanan.SelectedRows[0].Cells["Produk"].Value.ToString();
+
+            if (statusSaat == "Selesai" || statusSaat == "Dibatalkan")
+            {
+                MessageBox.Show($"Pesanan sudah berstatus '{statusSaat}', tidak bisa ditolak.", "Info",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (statusSaat == "Dikirim" || statusSaat == "Diproses")
+            {
+                MessageBox.Show($"Pesanan sudah '{statusSaat}', tidak bisa ditolak!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string pesanKonfirmasi = statusSaat == "Pending"
+                ? $"Yakin ingin MENOLAK pesanan ini?\n\nPembeli : {namaPembeli}\nProduk  : {namaProduk}\nStatus  : {statusSaat}\n\nPesanan akan dibatalkan dan stok dikembalikan."
+                : $"Yakin ingin MENOLAK pembayaran pesanan ini?\n\nPembeli : {namaPembeli}\nProduk  : {namaProduk}\nStatus  : {statusSaat}\n\nPesanan akan dibatalkan dan stok dikembalikan.";
+
+            if (MessageBox.Show(pesanKonfirmasi, "Konfirmasi Penolakan",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                SqlTransaction trans = null;
+                try
+                {
+                    conn.Open();
+                    trans = conn.BeginTransaction();
+
+                    // ✅ Pakai SP sp_KonfirmasiPembayaran dengan status Gagal
+                    string qCek = "SELECT COUNT(*) FROM PEMBAYARAN WHERE id_pesanan = @id";
+                    SqlCommand cmdCek = new SqlCommand(qCek, conn, trans);
+                    cmdCek.Parameters.AddWithValue("@id", idPesanan);
+                    int adaPembayaran = (int)cmdCek.ExecuteScalar();
+
+                    if (adaPembayaran > 0)
+                    {
+                        // ✅ Pakai SP untuk update pembayaran
+                        SqlCommand cmdSP = new SqlCommand("sp_KonfirmasiPembayaran", conn, trans);
+                        cmdSP.CommandType = CommandType.StoredProcedure;
+                        cmdSP.Parameters.AddWithValue("@id_pesanan", idPesanan);
+                        cmdSP.Parameters.AddWithValue("@status_bayar", "Gagal");
+                        SqlParameter pHasil = new SqlParameter("@hasil", SqlDbType.Int)
+                        { Direction = ParameterDirection.Output };
+                        cmdSP.Parameters.Add(pHasil);
+                        cmdSP.ExecuteNonQuery();
+                    }
+                    else
+                    {
+                        string qInsert = @"INSERT INTO PEMBAYARAN 
+                                           (id_pesanan, metode, jumlah_bayar, status_bayar, tanggal_bayar)
+                                           SELECT id_pesanan, 'Transfer Bank', total_harga, 'Gagal', GETDATE()
+                                           FROM PESANAN WHERE id_pesanan = @id";
+                        SqlCommand cmdInsert = new SqlCommand(qInsert, conn, trans);
+                        cmdInsert.Parameters.AddWithValue("@id", idPesanan);
+                        cmdInsert.ExecuteNonQuery();
+
+                        // Update pesanan dan stok manual jika tidak ada pembayaran
+                        string qPesanan = "UPDATE PESANAN SET status_pesanan = 'Dibatalkan' WHERE id_pesanan = @id";
+                        SqlCommand cmdPesanan = new SqlCommand(qPesanan, conn, trans);
+                        cmdPesanan.Parameters.AddWithValue("@id", idPesanan);
+                        cmdPesanan.ExecuteNonQuery();
+
+                        string qStok = @"UPDATE p SET p.stok = p.stok + dp.jumlah
+                                         FROM PRODUK p
+                                         INNER JOIN DETAIL_PESANAN dp ON p.id_produk = dp.id_produk
+                                         WHERE dp.id_pesanan = @id";
+                        SqlCommand cmdStok = new SqlCommand(qStok, conn, trans);
+                        cmdStok.Parameters.AddWithValue("@id", idPesanan);
+                        cmdStok.ExecuteNonQuery();
+                    }
+
+                    trans.Commit();
+
+                    MessageBox.Show(
+                        $"Pesanan #{idPesanan} berhasil DITOLAK.\n\n" +
+                        $"Status sebelum    : {statusSaat}\n" +
+                        $"Status sekarang   : Dibatalkan\n" +
+                        $"Status pembayaran : Gagal\n" +
+                        $"Stok produk sudah dikembalikan.",
+                        "Penolakan Berhasil",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    LoadPesanan();
+                }
+                catch (Exception ex)
+                {
+                    trans?.Rollback();
+                    MessageBox.Show("Gagal menolak pembayaran: " + ex.Message, "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+    }
+}
