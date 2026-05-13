@@ -834,6 +834,9 @@ namespace SistemPenjualanDiecastNew
                 return;
             }
 
+            // ✅ Panggil validasi dulu
+            if (!ValidasiInputProduk()) return;
+
             using (SqlConnection conn = new SqlConnection(connStr))
             {
                 try
