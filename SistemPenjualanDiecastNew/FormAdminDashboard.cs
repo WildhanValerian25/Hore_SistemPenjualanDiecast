@@ -943,6 +943,86 @@ namespace SistemPenjualanDiecastNew
                 }
             }
         }
+        // =============================================
+        // METHOD VALIDASI PRODUK
+        // =============================================
+        private bool ValidasiInputProduk()
+        {
+            // ✅ 1. Validasi semua field wajib diisi
+            if (string.IsNullOrWhiteSpace(txtNamaProduk?.Text) ||
+                string.IsNullOrWhiteSpace(txtHarga?.Text) ||
+                string.IsNullOrWhiteSpace(txtStok?.Text) ||
+                string.IsNullOrWhiteSpace(txtJenisProduk?.Text))
+            {
+                MessageBox.Show("Semua field wajib diisi!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            // ✅ 2. Validasi Nama Produk harus mengandung huruf abjad
+            bool namaMengandungHuruf = false;
+            foreach (char c in txtNamaProduk.Text)
+            {
+                if (char.IsLetter(c)) { namaMengandungHuruf = true; break; }
+            }
+            if (!namaMengandungHuruf)
+            {
+                MessageBox.Show("Nama Produk harus mengandung huruf abjad!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtNamaProduk.Focus();
+                return false;
+            }
+
+            // ✅ 3. Validasi Merek harus mengandung huruf abjad
+            bool merekMengandungHuruf = false;
+            foreach (char c in txtJenisProduk.Text)
+            {
+                if (char.IsLetter(c)) { merekMengandungHuruf = true; break; }
+            }
+            if (!merekMengandungHuruf)
+            {
+                MessageBox.Show("Merek harus mengandung huruf abjad!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtJenisProduk.Focus();
+                return false;
+            }
+
+            // ✅ 4. Validasi Harga harus angka dan tidak boleh 0 atau negatif
+            if (!decimal.TryParse(
+                    txtHarga.Text.Replace(".", "").Replace(",", "").Trim(),
+                    out decimal harga))
+            {
+                MessageBox.Show("Harga harus berupa angka!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtHarga.Focus();
+                return false;
+            }
+            if (harga <= 0)
+            {
+                MessageBox.Show("Harga tidak boleh 0 atau negatif!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtHarga.Focus();
+                return false;
+            }
+
+            // ✅ 5. Validasi Stok harus angka dan tidak boleh 0 atau negatif
+            if (!int.TryParse(txtStok.Text.Trim(), out int stok))
+            {
+                MessageBox.Show("Stok harus berupa angka bulat!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtStok.Focus();
+                return false;
+            }
+            if (stok <= 0)
+            {
+                MessageBox.Show("Stok tidak boleh 0 atau negatif!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtStok.Focus();
+                return false;
+            }
+
+            return true; // ✅ Semua validasi lolos
+        }
 
         private void Grid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
