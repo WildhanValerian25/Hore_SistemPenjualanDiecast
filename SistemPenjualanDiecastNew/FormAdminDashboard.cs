@@ -739,15 +739,8 @@ namespace SistemPenjualanDiecastNew
         // =============================================
         private void BtnAdd_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtNamaProduk?.Text) ||
-                string.IsNullOrWhiteSpace(txtHarga?.Text) ||
-                string.IsNullOrWhiteSpace(txtStok?.Text) ||
-                string.IsNullOrWhiteSpace(txtJenisProduk?.Text))
-            {
-                MessageBox.Show("Semua field wajib diisi!", "Peringatan",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            if (!ValidasiInputProduk())
                 return;
-            }
 
             using (SqlConnection conn = new SqlConnection(connStr))
             {
@@ -757,45 +750,74 @@ namespace SistemPenjualanDiecastNew
 
                     SqlCommand cmdAdmin = new SqlCommand(
                         "SELECT id_admin FROM ADMIN WHERE [username] = @u", conn);
+
                     cmdAdmin.Parameters.AddWithValue("@u", userRole);
+
                     object res = cmdAdmin.ExecuteScalar();
-                    int idAdmin = res != null ? Convert.ToInt32(res) : 1;
+
+                    int idAdmin = res != null
+                        ? Convert.ToInt32(res)
+                        : 1;
 
                     SqlCommand cmd = new SqlCommand("sp_InsertProduk", conn);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@id_admin", idAdmin);
-                    cmd.Parameters.AddWithValue("@nama_produk", txtNamaProduk.Text.Trim());
-                    cmd.Parameters.AddWithValue("@merek", txtJenisProduk.Text.Trim());
-                    cmd.Parameters.AddWithValue("@harga", decimal.Parse(txtHarga.Text.Replace(",", "").Replace(".", "")));
-                    cmd.Parameters.AddWithValue("@stok", int.Parse(txtStok.Text.Trim()));
 
-                    SqlParameter pResult = new SqlParameter("@hasil", SqlDbType.Int)
-                    { Direction = ParameterDirection.Output };
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@id_admin", idAdmin);
+
+                    cmd.Parameters.AddWithValue(
+                        "@nama_produk",
+                        txtNamaProduk.Text.Trim());
+
+                    cmd.Parameters.AddWithValue(
+                        "@merek",
+                        txtJenisProduk.Text.Trim());
+
+                    cmd.Parameters.AddWithValue(
+                        "@harga",
+                        decimal.Parse(
+                            txtHarga.Text.Replace(".", "").Replace(",", "")));
+
+                    cmd.Parameters.AddWithValue(
+                        "@stok",
+                        int.Parse(txtStok.Text.Trim()));
+
+                    SqlParameter pResult =
+                        new SqlParameter("@hasil", SqlDbType.Int);
+
+                    pResult.Direction = ParameterDirection.Output;
+
                     cmd.Parameters.Add(pResult);
+
                     cmd.ExecuteNonQuery();
 
                     if (Convert.ToInt32(pResult.Value) == 1)
                     {
-                        MessageBox.Show("Produk berhasil ditambahkan!", "Berhasil",
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(
+                            "Produk berhasil ditambahkan!",
+                            "Berhasil",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+
                         ClearForm();
                         LoadProduk();
                     }
                     else
                     {
-                        MessageBox.Show("Gagal menambahkan produk!", "Error",
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show(
+                            "Gagal menambahkan produk!",
+                            "Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
                     }
-                }
-                catch (FormatException)
-                {
-                    MessageBox.Show("Harga dan Stok harus berupa angka!", "Peringatan",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Gagal tambah produk: " + ex.Message, "Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        "Gagal tambah produk: " + ex.Message,
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
         }
