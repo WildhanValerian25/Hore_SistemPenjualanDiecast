@@ -19,7 +19,7 @@ namespace SistemPenjualanDiecastNew
         private decimal _totalHarga;
         private string _metode;
 
-        string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+        string connStr = Koneksi.GetConnectionString();
 
         public FormPembayaran(int idPesanan, decimal totalHarga, string metode)
         {

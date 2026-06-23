@@ -17,7 +17,7 @@ namespace SistemPenjualanDiecastNew
         private string _statusSaat;
         private const string placeholder = "Isi jika status Dikirim";
 
-        string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+        string connStr = Koneksi.GetConnectionString();
 
         public FormKonfirmasiResi(int idPesanan, string statusSaat, string namaPembeli, string namaProduk)
         {

@@ -13,17 +13,19 @@ namespace SistemPenjualanDiecastNew
         TextBox txtEmail, txtAlamat, txtNoHP;
         DataGridView dgvProducts;
         Button btnBuy, btnAddDana, btnDeleteDana, btnLogout, btnEditProfile;
-        Button btnRiwayat, btnLaporanSaya;
+        Button btnRiwayat;
         Panel pnlProfile, pnlMarket;
 
+        // ✅ BindingSource untuk DataGridView
         private BindingSource _bindingSource = new BindingSource();
 
         private string _username;
         private int _currentSaldo = 0;
         private bool isEditMode = false;
 
-        string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+        string connStr = Koneksi.GetConnectionString();
 
+        // ── PALET WARNA (disamakan dengan FormLogin / FormRegister / FormAdminDashboard / FormAdminPembayaran) ──
         private readonly Color cBgDark = Color.FromArgb(8, 18, 38);
         private readonly Color cBgMid = Color.FromArgb(11, 30, 62);
         private readonly Color cCard = Color.FromArgb(14, 38, 78);
@@ -59,7 +61,7 @@ namespace SistemPenjualanDiecastNew
         private void InitializeForm()
         {
             this.Text = "User Dashboard - Diecast Store";
-            this.Size = new Size(960, 640);
+            this.Size = new Size(960, 600);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = cBgDark;
             this.Font = new Font("Segoe UI", 9.5F);
@@ -78,7 +80,7 @@ namespace SistemPenjualanDiecastNew
         private void BuildUI()
         {
             // ── CARD PROFIL (kiri) ───────────────────────────────
-            pnlProfile = CreateCardPanel(24, 16, 300, 568);
+            pnlProfile = CreateCardPanel(24, 16, 300, 528);
 
             lblTitle = new Label()
             {
@@ -124,24 +126,13 @@ namespace SistemPenjualanDiecastNew
             btnRiwayat = CreateUserButton("RIWAYAT & BAYAR PESANAN", 20, 321, 258, cAccent, 40);
             btnRiwayat.Click += BtnRiwayat_Click;
 
-            // ✅ Tombol Laporan Pesanan Saya
-            btnLaporanSaya = CreateUserButton("📄 LAPORAN PESANAN SAYA", 20, 373, 258,
-                Color.FromArgb(40, 100, 60), 40);
-            btnLaporanSaya.Click += (s, e) =>
-            {
-                FormLaporanUser f = new FormLaporanUser(_username);
-                f.ShowDialog();
-            };
-
             pnlProfile.Controls.AddRange(new Control[] {
                 lblTitle, lblUsername, lblEmail, lblAlamat, lblNoHP,
                 txtEmail, txtAlamat, txtNoHP,
-                lblSaldo, btnAddDana, btnDeleteDana,
-                btnEditProfile, btnRiwayat,
-                btnLaporanSaya  // ✅ ditambahkan
+                lblSaldo, btnAddDana, btnDeleteDana, btnEditProfile, btnRiwayat
             });
 
-            // ── TOMBOL LOGOUT ──
+            // ── TOMBOL LOGOUT (pojok kanan atas, di luar card) ──
             btnLogout = new Button()
             {
                 Text = "LOGOUT",
@@ -159,7 +150,7 @@ namespace SistemPenjualanDiecastNew
             btnLogout.Click += BtnLogout_Click;
 
             // ── CARD MARKET (kanan) ──────────────────────────────
-            pnlMarket = CreateCardPanel(340, 16, 596, 568);
+            pnlMarket = CreateCardPanel(340, 16, 596, 528);
 
             Label lblMarket = new Label()
             {
@@ -174,7 +165,7 @@ namespace SistemPenjualanDiecastNew
             dgvProducts = new DataGridView()
             {
                 Location = new Point(20, 56),
-                Size = new Size(556, 420),
+                Size = new Size(556, 390),
                 BackgroundColor = cInputBg,
                 GridColor = cCardBord,
                 BorderStyle = BorderStyle.None,
@@ -208,6 +199,8 @@ namespace SistemPenjualanDiecastNew
             dgvProducts.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
 
             dgvProducts.RowTemplate.Height = 30;
+
+            // ✅ Hubungkan BindingSource ke DataGridView
             dgvProducts.DataSource = _bindingSource;
 
             dgvProducts.CellClick += (s, e) =>
@@ -220,7 +213,7 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "BELI PRODUK SEKARANG",
                 Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
-                Location = new Point(20, 490),
+                Location = new Point(20, 462),
                 Size = new Size(556, 48),
                 BackColor = cAccent,
                 ForeColor = Color.White,
@@ -243,12 +236,7 @@ namespace SistemPenjualanDiecastNew
         // ════════════════════════════════════════════════════════
         private Panel CreateCardPanel(int x, int y, int w, int h)
         {
-            Panel p = new Panel()
-            {
-                Location = new Point(x, y),
-                Size = new Size(w, h),
-                BackColor = Color.Transparent
-            };
+            Panel p = new Panel() { Location = new Point(x, y), Size = new Size(w, h), BackColor = Color.Transparent };
             p.Paint += (s, e) =>
             {
                 Graphics g = e.Graphics;
@@ -292,8 +280,7 @@ namespace SistemPenjualanDiecastNew
             };
         }
 
-        private Button CreateUserButton(string text, int x, int y, int width,
-            Color baseColor, int height = 35)
+        private Button CreateUserButton(string text, int x, int y, int width, Color baseColor, int height = 35)
         {
             Button b = new Button()
             {
@@ -372,6 +359,7 @@ namespace SistemPenjualanDiecastNew
                 {
                     conn.Open();
 
+                    // ✅ Pakai Stored Procedure (sudah ada sebelumnya)
                     SqlCommand cmd = new SqlCommand("sp_UpdateProfilPelanggan", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@username", _username);
@@ -409,6 +397,10 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
+        // =============================================
+        // ✅ PERBAIKAN — Sekarang memanggil Stored
+        //    Procedure sp_GetProfilPelanggan
+        // =============================================
         private void LoadUserData()
         {
             using (SqlConnection conn = new SqlConnection(connStr))
@@ -453,6 +445,10 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
+        // =============================================
+        // ✅ PERBAIKAN — Sekarang memanggil Stored
+        //    Procedure sp_GetProdukAktif
+        // =============================================
         private void LoadProductData()
         {
             using (SqlConnection conn = new SqlConnection(connStr))
@@ -469,6 +465,7 @@ namespace SistemPenjualanDiecastNew
                         DataTable dt = new DataTable();
                         da.Fill(dt);
 
+                        // ✅ Set data ke BindingSource
                         _bindingSource.DataSource = dt;
                     }
 
@@ -482,6 +479,7 @@ namespace SistemPenjualanDiecastNew
                             new System.Globalization.CultureInfo("id-ID");
                     }
 
+                    // ✅ Warnai baris berdasarkan status stok
                     dgvProducts.CellFormatting -= DgvProducts_CellFormatting;
                     dgvProducts.CellFormatting += DgvProducts_CellFormatting;
                 }
@@ -493,9 +491,12 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
+        // ✅ Warnai baris sesuai status stok
         private void DgvProducts_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0) return;
+
+            // ✅ Warnai berdasarkan kolom Stok, bukan Status
             if (!dgvProducts.Columns.Contains("Stok")) return;
 
             object stokVal = dgvProducts.Rows[e.RowIndex].Cells["Stok"].Value;
@@ -504,14 +505,13 @@ namespace SistemPenjualanDiecastNew
             int stok = Convert.ToInt32(stokVal);
             Color warna;
 
-            if (stok == 0) warna = Color.FromArgb(70, 25, 30);
-            else if (stok <= 5) warna = Color.FromArgb(70, 60, 25);
-            else warna = cInputBg;
+            if (stok == 0) warna = Color.FromArgb(70, 25, 30);        // Merah gelap - Habis
+            else if (stok <= 5) warna = Color.FromArgb(70, 60, 25);   // Kuning gelap - Hampir Habis
+            else warna = cInputBg;                                   // Normal
 
             dgvProducts.Rows[e.RowIndex].DefaultCellStyle.BackColor = warna;
             dgvProducts.Rows[e.RowIndex].DefaultCellStyle.ForeColor = cTextPri;
         }
-
         private void UpdateDana(int jumlah)
         {
             _currentSaldo += jumlah;
@@ -561,10 +561,8 @@ namespace SistemPenjualanDiecastNew
 
         private void BtnLogout_Click(object sender, EventArgs e)
         {
-            DialogResult confirm = MessageBox.Show(
-                "Apakah Anda yakin ingin logout?", "Konfirmasi Logout",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
+            DialogResult confirm = MessageBox.Show("Apakah Anda yakin ingin logout?", "Konfirmasi Logout",
+                                   MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (confirm == DialogResult.Yes)
             {
                 this.Tag = "Logout";

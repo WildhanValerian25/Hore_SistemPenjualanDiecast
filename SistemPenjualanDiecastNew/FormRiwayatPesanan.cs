@@ -4,8 +4,6 @@ using System.Data.SqlClient;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using CrystalDecisions.CrystalReports.Engine;
-using CrystalDecisions.Shared;
 
 namespace SistemPenjualanDiecastNew
 {
@@ -21,7 +19,7 @@ namespace SistemPenjualanDiecastNew
         private BindingSource _bindingSource = new BindingSource();
 
         private string _username;
-        string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+        string connStr = Koneksi.GetConnectionString();
 
         // ── PALET WARNA (disamakan dengan form lain) ──
         private readonly Color cBgDark = Color.FromArgb(8, 18, 38);
