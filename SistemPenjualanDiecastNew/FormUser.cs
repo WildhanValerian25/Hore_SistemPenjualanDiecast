@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace SistemPenjualanDiecastNew
@@ -12,9 +13,9 @@ namespace SistemPenjualanDiecastNew
         TextBox txtEmail, txtAlamat, txtNoHP;
         DataGridView dgvProducts;
         Button btnBuy, btnAddDana, btnDeleteDana, btnLogout, btnEditProfile;
-        Button btnRiwayat;
+        Button btnRiwayat, btnLaporanSaya;
+        Panel pnlProfile, pnlMarket;
 
-        // ✅ BindingSource untuk DataGridView
         private BindingSource _bindingSource = new BindingSource();
 
         private string _username;
@@ -22,6 +23,18 @@ namespace SistemPenjualanDiecastNew
         private bool isEditMode = false;
 
         string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+
+        private readonly Color cBgDark = Color.FromArgb(8, 18, 38);
+        private readonly Color cBgMid = Color.FromArgb(11, 30, 62);
+        private readonly Color cCard = Color.FromArgb(14, 38, 78);
+        private readonly Color cCardBord = Color.FromArgb(25, 60, 110);
+        private readonly Color cAccent = Color.FromArgb(26, 86, 219);
+        private readonly Color cAccentHover = Color.FromArgb(35, 100, 235);
+        private readonly Color cAccentDown = Color.FromArgb(15, 60, 170);
+        private readonly Color cInputBg = Color.FromArgb(10, 26, 55);
+        private readonly Color cInputBrd = Color.FromArgb(40, 70, 130);
+        private readonly Color cTextPri = Color.FromArgb(230, 238, 255);
+        private readonly Color cTextMut = Color.FromArgb(100, 130, 180);
 
         public FormUser(string userLogin)
         {
@@ -46,101 +59,124 @@ namespace SistemPenjualanDiecastNew
         private void InitializeForm()
         {
             this.Text = "User Dashboard - Diecast Store";
-            this.Size = new Size(920, 600);
+            this.Size = new Size(960, 640);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.BackColor = Color.White;
+            this.BackColor = cBgDark;
+            this.Font = new Font("Segoe UI", 9.5F);
+            this.Paint += Form_Paint;
+        }
+
+        private void Form_Paint(object sender, PaintEventArgs e)
+        {
+            using (LinearGradientBrush br = new LinearGradientBrush(
+                this.ClientRectangle, cBgDark, cBgMid, LinearGradientMode.ForwardDiagonal))
+            {
+                e.Graphics.FillRectangle(br, this.ClientRectangle);
+            }
         }
 
         private void BuildUI()
         {
-            lblTitle = new Label() { Text = "USER PROFILE", Font = new Font("Segoe UI", 12, FontStyle.Bold), Location = new Point(30, 20), AutoSize = true };
-            lblUsername = CreateLabel("Username: -", 50);
-            lblEmail = CreateLabel("Email: -", 80);
-            lblAlamat = CreateLabel("Alamat: -", 110);
-            lblNoHP = CreateLabel("No HP: -", 140);
+            // ── CARD PROFIL (kiri) ───────────────────────────────
+            pnlProfile = CreateCardPanel(24, 16, 300, 568);
 
-            txtEmail = new TextBox() { Location = new Point(100, 77), Width = 150, Visible = false };
-            txtAlamat = new TextBox() { Location = new Point(100, 107), Width = 150, Visible = false };
-            txtNoHP = new TextBox() { Location = new Point(100, 137), Width = 150, Visible = false };
+            lblTitle = new Label()
+            {
+                Text = "USER PROFILE",
+                Font = new Font("Segoe UI", 13, FontStyle.Bold),
+                ForeColor = cTextPri,
+                BackColor = Color.Transparent,
+                Location = new Point(20, 18),
+                AutoSize = true
+            };
+
+            lblUsername = CreateProfileLabel("Username: -", 58);
+            lblEmail = CreateProfileLabel("Email: -", 88);
+            lblAlamat = CreateProfileLabel("Alamat: -", 118);
+            lblNoHP = CreateProfileLabel("No HP: -", 148);
+
+            txtEmail = CreateDarkTextBox(20, 85, 150);
+            txtAlamat = CreateDarkTextBox(20, 115, 150);
+            txtNoHP = CreateDarkTextBox(20, 145, 150);
+            txtEmail.Visible = txtAlamat.Visible = txtNoHP.Visible = false;
 
             lblSaldo = new Label()
             {
                 Text = "Saldo: Rp 0",
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                ForeColor = Color.DarkGreen,
-                Location = new Point(30, 180),
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                ForeColor = Color.FromArgb(120, 220, 150),
+                BackColor = Color.Transparent,
+                Location = new Point(20, 188),
                 AutoSize = true
             };
 
-            btnAddDana = new Button()
-            {
-                Text = "Tambah Dana",
-                Location = new Point(30, 210),
-                Size = new Size(110, 35),
-                BackColor = Color.LightBlue,
-                FlatStyle = FlatStyle.Flat
-            };
+            btnAddDana = CreateUserButton("Tambah Dana", 20, 225, 125, cAccent);
             btnAddDana.Click += (s, e) => UpdateDana(50000);
 
-            btnDeleteDana = new Button()
-            {
-                Text = "Reset Dana",
-                Location = new Point(150, 210),
-                Size = new Size(110, 35),
-                BackColor = Color.MistyRose,
-                FlatStyle = FlatStyle.Flat
-            };
+            btnDeleteDana = CreateUserButton("Reset Dana", 153, 225, 125, Color.FromArgb(150, 45, 55));
             btnDeleteDana.Click += (s, e) => { _currentSaldo = 0; UpdateSaldoLabel(); };
 
-            btnEditProfile = new Button()
-            {
-                Text = "EDIT PROFILE",
-                Location = new Point(30, 260),
-                Size = new Size(230, 35),
-                BackColor = Color.WhiteSmoke,
-                FlatStyle = FlatStyle.Flat
-            };
+            btnEditProfile = CreateUserButton("EDIT PROFILE", 20, 273, 258, Color.FromArgb(20, 50, 100));
+            btnEditProfile.FlatAppearance.BorderSize = 1;
+            btnEditProfile.FlatAppearance.BorderColor = cInputBrd;
             btnEditProfile.Click += BtnEditProfile_Click;
 
-            btnRiwayat = new Button()
-            {
-                Text = "RIWAYAT & BAYAR PESANAN",
-                Location = new Point(30, 310),
-                Size = new Size(230, 40),
-                BackColor = Color.DarkBlue,
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
+            btnRiwayat = CreateUserButton("RIWAYAT & BAYAR PESANAN", 20, 321, 258, cAccent, 40);
             btnRiwayat.Click += BtnRiwayat_Click;
 
+            // ✅ Tombol Laporan Pesanan Saya
+            btnLaporanSaya = CreateUserButton("📄 LAPORAN PESANAN SAYA", 20, 373, 258,
+                Color.FromArgb(40, 100, 60), 40);
+            btnLaporanSaya.Click += (s, e) =>
+            {
+                FormLaporanUser f = new FormLaporanUser(_username);
+                f.ShowDialog();
+            };
+
+            pnlProfile.Controls.AddRange(new Control[] {
+                lblTitle, lblUsername, lblEmail, lblAlamat, lblNoHP,
+                txtEmail, txtAlamat, txtNoHP,
+                lblSaldo, btnAddDana, btnDeleteDana,
+                btnEditProfile, btnRiwayat,
+                btnLaporanSaya  // ✅ ditambahkan
+            });
+
+            // ── TOMBOL LOGOUT ──
             btnLogout = new Button()
             {
                 Text = "LOGOUT",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                Location = new Point(770, 15),
-                Size = new Size(100, 30),
-                BackColor = Color.Crimson,
+                Location = new Point(840, 16),
+                Size = new Size(96, 32),
+                BackColor = Color.FromArgb(150, 45, 55),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
+            btnLogout.FlatAppearance.BorderSize = 0;
+            btnLogout.FlatAppearance.MouseOverBackColor = Color.FromArgb(170, 55, 65);
+            ApplyRoundRegion(btnLogout, 8);
             btnLogout.Click += BtnLogout_Click;
+
+            // ── CARD MARKET (kanan) ──────────────────────────────
+            pnlMarket = CreateCardPanel(340, 16, 596, 568);
 
             Label lblMarket = new Label()
             {
                 Text = "READY STOCK DIECAST",
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                Location = new Point(350, 20),
+                Font = new Font("Segoe UI", 13, FontStyle.Bold),
+                ForeColor = cTextPri,
+                BackColor = Color.Transparent,
+                Location = new Point(20, 18),
                 AutoSize = true
             };
 
             dgvProducts = new DataGridView()
             {
-                Location = new Point(350, 50),
-                Size = new Size(520, 400),
-                BackgroundColor = Color.White,
+                Location = new Point(20, 56),
+                Size = new Size(556, 420),
+                BackgroundColor = cInputBg,
+                GridColor = cCardBord,
                 BorderStyle = BorderStyle.None,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
@@ -149,13 +185,29 @@ namespace SistemPenjualanDiecastNew
                 RowHeadersVisible = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 AllowUserToResizeRows = false,
-                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                ColumnHeadersHeight = 34,
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-                GridColor = Color.LightGray,
-                DefaultCellStyle = { SelectionBackColor = Color.SteelBlue, SelectionForeColor = Color.White }
+                Font = new Font("Segoe UI", 9F)
             };
 
-            // ✅ Hubungkan BindingSource ke DataGridView
+            dgvProducts.ColumnHeadersDefaultCellStyle.BackColor = cCard;
+            dgvProducts.ColumnHeadersDefaultCellStyle.ForeColor = cTextPri;
+            dgvProducts.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            dgvProducts.ColumnHeadersDefaultCellStyle.SelectionBackColor = cCard;
+
+            dgvProducts.DefaultCellStyle.BackColor = cInputBg;
+            dgvProducts.DefaultCellStyle.ForeColor = cTextPri;
+            dgvProducts.DefaultCellStyle.SelectionBackColor = cAccent;
+            dgvProducts.DefaultCellStyle.SelectionForeColor = Color.White;
+
+            dgvProducts.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(13, 32, 64);
+            dgvProducts.AlternatingRowsDefaultCellStyle.ForeColor = cTextPri;
+            dgvProducts.AlternatingRowsDefaultCellStyle.SelectionBackColor = cAccent;
+            dgvProducts.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
+
+            dgvProducts.RowTemplate.Height = 30;
             dgvProducts.DataSource = _bindingSource;
 
             dgvProducts.CellClick += (s, e) =>
@@ -167,23 +219,120 @@ namespace SistemPenjualanDiecastNew
             btnBuy = new Button()
             {
                 Text = "BELI PRODUK SEKARANG",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Location = new Point(350, 465),
-                Size = new Size(520, 50),
-                BackColor = Color.Black,
+                Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
+                Location = new Point(20, 490),
+                Size = new Size(556, 48),
+                BackColor = cAccent,
                 ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
             };
+            btnBuy.FlatAppearance.BorderSize = 0;
+            btnBuy.FlatAppearance.MouseOverBackColor = cAccentHover;
+            btnBuy.FlatAppearance.MouseDownBackColor = cAccentDown;
+            ApplyRoundRegion(btnBuy, 8);
             btnBuy.Click += BtnBuy_Click;
 
-            this.Controls.AddRange(new Control[] {
-                lblTitle, lblUsername, lblEmail, lblAlamat, lblNoHP, lblSaldo,
-                txtEmail, txtAlamat, txtNoHP, btnEditProfile,
-                btnAddDana, btnDeleteDana, btnRiwayat,
-                lblMarket, dgvProducts, btnBuy, btnLogout
-            });
+            pnlMarket.Controls.AddRange(new Control[] { lblMarket, dgvProducts, btnBuy });
+
+            this.Controls.AddRange(new Control[] { pnlProfile, pnlMarket, btnLogout });
         }
 
+        // ════════════════════════════════════════════════════════
+        // HELPERS VISUAL
+        // ════════════════════════════════════════════════════════
+        private Panel CreateCardPanel(int x, int y, int w, int h)
+        {
+            Panel p = new Panel()
+            {
+                Location = new Point(x, y),
+                Size = new Size(w, h),
+                BackColor = Color.Transparent
+            };
+            p.Paint += (s, e) =>
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle r = new Rectangle(0, 0, p.Width - 1, p.Height - 1);
+                using (GraphicsPath path = RoundedPath(r, 14))
+                {
+                    using (SolidBrush fillBr = new SolidBrush(cCard))
+                        g.FillPath(fillBr, path);
+                    using (Pen pen = new Pen(cCardBord, 1f))
+                        g.DrawPath(pen, path);
+                    p.Region = new Region(path);
+                }
+            };
+            return p;
+        }
+
+        private Label CreateProfileLabel(string text, int top)
+        {
+            return new Label()
+            {
+                Text = text,
+                Location = new Point(20, top),
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                ForeColor = cTextMut,
+                Font = new Font("Segoe UI", 9.5F)
+            };
+        }
+
+        private TextBox CreateDarkTextBox(int x, int y, int width)
+        {
+            return new TextBox()
+            {
+                Location = new Point(x, y),
+                Width = width,
+                BackColor = cInputBg,
+                ForeColor = cTextPri,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Segoe UI", 9.5F)
+            };
+        }
+
+        private Button CreateUserButton(string text, int x, int y, int width,
+            Color baseColor, int height = 35)
+        {
+            Button b = new Button()
+            {
+                Text = text,
+                Location = new Point(x, y),
+                Size = new Size(width, height),
+                BackColor = baseColor,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            b.FlatAppearance.BorderSize = 0;
+            ApplyRoundRegion(b, 8);
+            return b;
+        }
+
+        private static GraphicsPath RoundedPath(Rectangle r, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(r.X, r.Y, d, d, 180, 90);
+            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        private static void ApplyRoundRegion(Control c, int radius)
+        {
+            if (c.Width <= 0 || c.Height <= 0) return;
+            Rectangle r = new Rectangle(0, 0, c.Width, c.Height);
+            c.Region = new Region(RoundedPath(r, radius));
+        }
+
+        // ════════════════════════════════════════════════════════
+        // LOGIKA
+        // ════════════════════════════════════════════════════════
         private void BtnRiwayat_Click(object sender, EventArgs e)
         {
             FormRiwayatPesanan formRiwayat = new FormRiwayatPesanan(_username);
@@ -197,7 +346,7 @@ namespace SistemPenjualanDiecastNew
             {
                 isEditMode = true;
                 btnEditProfile.Text = "SIMPAN PERUBAHAN";
-                btnEditProfile.BackColor = Color.LightGreen;
+                btnEditProfile.BackColor = Color.FromArgb(35, 130, 90);
 
                 txtEmail.Text = lblEmail.Text.Replace("Email: ", "");
                 txtAlamat.Text = lblAlamat.Text.Replace("Alamat: ", "");
@@ -223,7 +372,6 @@ namespace SistemPenjualanDiecastNew
                 {
                     conn.Open();
 
-                    // ✅ Pakai Stored Procedure
                     SqlCommand cmd = new SqlCommand("sp_UpdateProfilPelanggan", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@username", _username);
@@ -243,7 +391,7 @@ namespace SistemPenjualanDiecastNew
 
                         isEditMode = false;
                         btnEditProfile.Text = "EDIT PROFILE";
-                        btnEditProfile.BackColor = Color.WhiteSmoke;
+                        btnEditProfile.BackColor = Color.FromArgb(20, 50, 100);
                         txtEmail.Visible = txtAlamat.Visible = txtNoHP.Visible = false;
                         LoadUserData();
                     }
@@ -268,30 +416,33 @@ namespace SistemPenjualanDiecastNew
                 try
                 {
                     conn.Open();
-                    string query = @"SELECT [username], email, alamat, no_telepon 
-                                         FROM PELANGGAN 
-                                         WHERE [username] = @u";
-                    SqlCommand cmd = new SqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@u", _username);
-                    SqlDataReader r = cmd.ExecuteReader();
 
-                    if (r.Read())
+                    using (SqlCommand cmd = new SqlCommand("sp_GetProfilPelanggan", conn))
                     {
-                        string email = r["email"] == DBNull.Value || r["email"].ToString() == "" ? "-" : r["email"].ToString();
-                        string alamat = r["alamat"] == DBNull.Value || r["alamat"].ToString() == "" ? "-" : r["alamat"].ToString();
-                        string noTelepon = r["no_telepon"] == DBNull.Value || r["no_telepon"].ToString() == "" ? "-" : r["no_telepon"].ToString();
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@username", _username);
 
-                        lblUsername.Text = "Username: " + r["username"].ToString();
-                        lblEmail.Text = "Email: " + email;
-                        lblAlamat.Text = "Alamat: " + alamat;
-                        lblNoHP.Text = "No HP: " + noTelepon;
-                    }
-                    else
-                    {
-                        lblUsername.Text = "Username: " + _username;
-                        lblEmail.Text = "Email: -";
-                        lblAlamat.Text = "Alamat: -";
-                        lblNoHP.Text = "No HP: -";
+                        using (SqlDataReader r = cmd.ExecuteReader())
+                        {
+                            if (r.Read())
+                            {
+                                string email = r["email"] == DBNull.Value || r["email"].ToString() == "" ? "-" : r["email"].ToString();
+                                string alamat = r["alamat"] == DBNull.Value || r["alamat"].ToString() == "" ? "-" : r["alamat"].ToString();
+                                string noTelepon = r["no_telepon"] == DBNull.Value || r["no_telepon"].ToString() == "" ? "-" : r["no_telepon"].ToString();
+
+                                lblUsername.Text = "Username: " + r["username"].ToString();
+                                lblEmail.Text = "Email: " + email;
+                                lblAlamat.Text = "Alamat: " + alamat;
+                                lblNoHP.Text = "No HP: " + noTelepon;
+                            }
+                            else
+                            {
+                                lblUsername.Text = "Username: " + _username;
+                                lblEmail.Text = "Email: -";
+                                lblAlamat.Text = "Alamat: -";
+                                lblNoHP.Text = "No HP: -";
+                            }
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -310,21 +461,16 @@ namespace SistemPenjualanDiecastNew
                 {
                     conn.Open();
 
-                    // ✅ Pakai VIEW vw_ProdukAktif
-                    string query = @"SELECT id_produk,
-                        nama_produk AS Nama_Diecast,
-                        merek       AS Merek,
-                        harga       AS Harga,
-                        stok        AS Stok
-                        FROM vw_ProdukAktif
-                        WHERE stok > 0";
+                    using (SqlCommand cmd = new SqlCommand("sp_GetProdukAktif", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
 
-                    SqlDataAdapter da = new SqlDataAdapter(query, conn);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
 
-                    // ✅ Set data ke BindingSource
-                    _bindingSource.DataSource = dt;
+                        _bindingSource.DataSource = dt;
+                    }
 
                     if (dgvProducts.Columns.Contains("id_produk"))
                         dgvProducts.Columns["id_produk"].Visible = false;
@@ -336,7 +482,6 @@ namespace SistemPenjualanDiecastNew
                             new System.Globalization.CultureInfo("id-ID");
                     }
 
-                    // ✅ Warnai baris berdasarkan status stok
                     dgvProducts.CellFormatting -= DgvProducts_CellFormatting;
                     dgvProducts.CellFormatting += DgvProducts_CellFormatting;
                 }
@@ -348,12 +493,9 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
-        // ✅ Warnai baris sesuai status stok
         private void DgvProducts_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0) return;
-
-            // ✅ Warnai berdasarkan kolom Stok, bukan Status
             if (!dgvProducts.Columns.Contains("Stok")) return;
 
             object stokVal = dgvProducts.Rows[e.RowIndex].Cells["Stok"].Value;
@@ -362,12 +504,14 @@ namespace SistemPenjualanDiecastNew
             int stok = Convert.ToInt32(stokVal);
             Color warna;
 
-            if (stok == 0) warna = Color.FromArgb(255, 200, 200); // Merah - Habis
-            else if (stok <= 5) warna = Color.FromArgb(255, 243, 205); // Kuning - Hampir Habis
-            else warna = Color.White;                    // Normal
+            if (stok == 0) warna = Color.FromArgb(70, 25, 30);
+            else if (stok <= 5) warna = Color.FromArgb(70, 60, 25);
+            else warna = cInputBg;
 
             dgvProducts.Rows[e.RowIndex].DefaultCellStyle.BackColor = warna;
+            dgvProducts.Rows[e.RowIndex].DefaultCellStyle.ForeColor = cTextPri;
         }
+
         private void UpdateDana(int jumlah)
         {
             _currentSaldo += jumlah;
@@ -417,8 +561,10 @@ namespace SistemPenjualanDiecastNew
 
         private void BtnLogout_Click(object sender, EventArgs e)
         {
-            DialogResult confirm = MessageBox.Show("Apakah Anda yakin ingin logout?", "Konfirmasi Logout",
-                                   MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            DialogResult confirm = MessageBox.Show(
+                "Apakah Anda yakin ingin logout?", "Konfirmasi Logout",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
             if (confirm == DialogResult.Yes)
             {
                 this.Tag = "Logout";
@@ -448,17 +594,6 @@ namespace SistemPenjualanDiecastNew
         {
             if (this.Tag == null || this.Tag.ToString() != "Logout")
                 Application.Exit();
-        }
-
-        private Label CreateLabel(string text, int top)
-        {
-            return new Label()
-            {
-                Text = text,
-                Location = new Point(30, top),
-                AutoSize = true,
-                Font = new Font("Segoe UI", 9)
-            };
         }
     }
 }

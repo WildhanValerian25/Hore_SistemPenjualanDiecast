@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace SistemPenjualanDiecastNew
@@ -19,6 +20,23 @@ namespace SistemPenjualanDiecastNew
         bool isDashboardActive = false;
         string userRole;
         string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
+
+        // ── PALET WARNA (disamakan dengan FormLogin / FormRegister) ──
+        private readonly Color cBgDark = Color.FromArgb(8, 18, 38);
+        private readonly Color cBgMid = Color.FromArgb(11, 30, 62);
+        private readonly Color cCard = Color.FromArgb(14, 38, 78);
+        private readonly Color cCardBord = Color.FromArgb(25, 60, 110);
+        private readonly Color cAccent = Color.FromArgb(26, 86, 219);
+        private readonly Color cAccentHover = Color.FromArgb(35, 100, 235);
+        private readonly Color cAccentDown = Color.FromArgb(15, 60, 170);
+        private readonly Color cInputBg = Color.FromArgb(10, 26, 55);
+        private readonly Color cInputBrd = Color.FromArgb(40, 70, 130);
+        private readonly Color cTextPri = Color.FromArgb(230, 238, 255);
+        private readonly Color cTextMut = Color.FromArgb(100, 130, 180);
+        private readonly Color cSidebar = Color.FromArgb(11, 26, 53);
+        private readonly Color cSidebarBtn = Color.FromArgb(18, 44, 88);
+        private readonly Color cSidebarBtnHover = Color.FromArgb(26, 86, 219);
+        private readonly Color cHeader = Color.FromArgb(11, 30, 62);
 
         public FormAdminDashboard(string role)
         {
@@ -43,21 +61,44 @@ namespace SistemPenjualanDiecastNew
             this.Text = "Admin Dashboard";
             this.Size = new Size(1000, 600);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.BackColor = Color.White;
+            this.BackColor = cBgDark;
+            this.Font = new Font("Segoe UI", 9.5F);
+            this.Paint += Form_Paint;
 
             // HEADER
-            header = new Panel() { Size = new Size(1000, 60), Dock = DockStyle.Top, BackColor = Color.DarkBlue };
-            lblTitle = new Label() { Text = "ADMIN DASHBOARD", ForeColor = Color.White, Font = new Font("Segoe UI", 14, FontStyle.Bold), Location = new Point(20, 15), AutoSize = true };
-            lblRole = new Label() { ForeColor = Color.White, Location = new Point(800, 20), AutoSize = true };
+            header = new Panel() { Size = new Size(1000, 60), Dock = DockStyle.Top, BackColor = cHeader };
+            header.Paint += (s, e) =>
+            {
+                using (Pen p = new Pen(cCardBord, 1))
+                    e.Graphics.DrawLine(p, 0, header.Height - 1, header.Width, header.Height - 1);
+            };
+
+            lblTitle = new Label()
+            {
+                Text = "ADMIN DASHBOARD",
+                ForeColor = cTextPri,
+                Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                Location = new Point(20, 15),
+                BackColor = Color.Transparent,
+                AutoSize = true
+            };
+            lblRole = new Label()
+            {
+                ForeColor = cAccentHover,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Location = new Point(800, 22),
+                BackColor = Color.Transparent,
+                AutoSize = true
+            };
             header.Controls.AddRange(new Control[] { lblTitle, lblRole });
 
             // SIDEBAR
-            sidebar = new Panel() { Size = new Size(200, 600), Dock = DockStyle.Left, BackColor = Color.LightGray };
+            sidebar = new Panel() { Size = new Size(200, 600), Dock = DockStyle.Left, BackColor = cSidebar };
 
-            btnDashboard = CreateButton("Dashboard", 30);
-            btnProduk = CreateButton("Produk", 80);
+            btnDashboard = CreateSidebarButton("Dashboard", 20);
+            btnProduk = CreateSidebarButton("Produk", 68);
 
-            Button btnPembayaran = CreateButton("Pembayaran", 130);
+            Button btnPembayaran = CreateSidebarButton("Pembayaran", 116);
             btnPembayaran.Click += (s, e) =>
             {
                 FormAdminPembayaran f = new FormAdminPembayaran();
@@ -65,23 +106,49 @@ namespace SistemPenjualanDiecastNew
                 if (isDashboardActive) LoadDashboard();
             };
 
-            btnUser = CreateButton("User", 180);
-            btnLogout = CreateButton("Logout", 530);
-
+            btnUser = CreateSidebarButton("User", 164);
+            // Button btnLaporan
+            Button btnLaporan = CreateSidebarButton("Laporan", 404);
+            btnLaporan.Click += (s, e) =>
+            {
+                FormLaporanPenjualan f = new FormLaporanPenjualan();
+                f.ShowDialog();
+            };
+            sidebar.Controls.Add(btnLaporan);
             // Tombol Test Koneksi
-            Button btnConnect = CreateButton("Test Koneksi", 230);
-            btnConnect.BackColor = Color.LightGreen;
+            Button btnConnect = CreateSidebarButton("Test Koneksi", 212);
             btnConnect.Click += BtnConnect_Click;
 
             // Tombol Reset Data
-            Button btnResetData = CreateButton("Reset Data", 280);
-            btnResetData.BackColor = Color.LightYellow;
+            Button btnResetData = CreateSidebarButton("Reset Data", 260);
             btnResetData.Click += BtnResetData_Click;
+            // Di dalam InitializeComponent(), di blok sidebar setelah btnResetData:
 
+            Button btnImportExcel = CreateSidebarButton("Import Excel", 356);
+            btnImportExcel.Click += (s, e) =>
+            {
+                // Ambil id_admin dari username yang login
+                int idAdmin = GetIdAdmin();
+                FormImportExcel f = new FormImportExcel(idAdmin);
+                f.ShowDialog();
+                if (isDashboardActive) LoadDashboard();
+                else LoadProduk();
+            };
+
+            Button btnExportExcel = CreateSidebarButton("Export Excel", 452);
+            btnExportExcel.Click += (s, e) =>
+            {
+                FormExportExcel f = new FormExportExcel();
+                f.ShowDialog();
+            };
+            sidebar.Controls.Add(btnExportExcel);
+            sidebar.Controls.Add(btnImportExcel);
             // Tombol Test SQL Injection
-            Button btnTestInjection = CreateButton("Test Injection", 330);
-            btnTestInjection.BackColor = Color.LightCoral;
+            Button btnTestInjection = CreateSidebarButton("Test Injection", 308);
             btnTestInjection.Click += BtnTestInjection_Click;
+
+            btnLogout = CreateSidebarButton("Logout", 530);
+            btnLogout.BackColor = Color.FromArgb(120, 30, 40);
 
             btnDashboard.Click += (s, e) => { isDashboardActive = true; LoadDashboard(); };
             btnProduk.Click += (s, e) => { isDashboardActive = false; RebuildContentArea(); LoadProduk(); };
@@ -95,35 +162,28 @@ namespace SistemPenjualanDiecastNew
             });
 
             // CONTENT
-            content = new Panel() { Dock = DockStyle.Fill, BackColor = Color.WhiteSmoke };
-            lblNama = new Label() { Text = "Nama Produk", Location = new Point(20, 10), AutoSize = true };
-            lblHarga = new Label() { Text = "Harga", Location = new Point(180, 10), AutoSize = true };
-            lblStok = new Label() { Text = "Stok", Location = new Point(310, 10), AutoSize = true };
-            lblJenis = new Label() { Text = "Merek", Location = new Point(440, 10), AutoSize = true };
+            content = new Panel() { Dock = DockStyle.Fill, BackColor = cBgMid };
+            content.Paint += Content_PaintBackground;
 
-            txtNamaProduk = new TextBox() { Location = new Point(20, 30), Width = 150 };
-            txtHarga = new TextBox() { Location = new Point(180, 30), Width = 120 };
-            txtStok = new TextBox() { Location = new Point(310, 30), Width = 120 };
-            txtJenisProduk = new TextBox() { Location = new Point(440, 30), Width = 120 };
+            lblNama = CreateFieldLabel("Nama Produk", 20);
+            lblHarga = CreateFieldLabel("Harga", 180);
+            lblStok = CreateFieldLabel("Stok", 310);
+            lblJenis = CreateFieldLabel("Merek", 440);
 
-            btnAdd = new Button() { Text = "Add", Location = new Point(580, 28), Width = 70 };
-            btnUpdate = new Button() { Text = "Update", Location = new Point(660, 28), Width = 70 };
-            btnDelete = new Button() { Text = "Delete", Location = new Point(740, 28), Width = 70 };
+            txtNamaProduk = CreateDarkTextBox(20, 150);
+            txtHarga = CreateDarkTextBox(180, 120);
+            txtStok = CreateDarkTextBox(310, 120);
+            txtJenisProduk = CreateDarkTextBox(440, 120);
+
+            btnAdd = CreateActionButton("Add", 580, cAccent);
+            btnUpdate = CreateActionButton("Update", 660, Color.FromArgb(40, 130, 90));
+            btnDelete = CreateActionButton("Delete", 740, Color.FromArgb(150, 45, 55));
 
             btnAdd.Click += BtnAdd_Click;
             btnUpdate.Click += BtnUpdate_Click;
             btnDelete.Click += BtnDelete_Click;
 
-            grid = new DataGridView()
-            {
-                Location = new Point(20, 80),
-                Size = new Size(740, 420),
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AllowUserToAddRows = false
-            };
+            grid = CreateDarkGrid(20, 80, 740, 420);
             grid.CellClick += Grid_CellClick;
 
             content.Controls.AddRange(new Control[] {
@@ -135,6 +195,177 @@ namespace SistemPenjualanDiecastNew
             this.Controls.Add(content);
             this.Controls.Add(sidebar);
             this.Controls.Add(header);
+        }
+
+        // =============================================
+        // BACKGROUND & VISUAL HELPERS
+        // =============================================
+        private void Form_Paint(object sender, PaintEventArgs e)
+        {
+            // Tidak menggambar full gradient di sini karena header/sidebar/content
+            // sudah Dock-filled menutupi client area; cukup warnai pinggiran jika ada.
+        }
+
+        private void Content_PaintBackground(object sender, PaintEventArgs e)
+        {
+            using (LinearGradientBrush br = new LinearGradientBrush(
+                content.ClientRectangle, cBgDark, cBgMid, LinearGradientMode.ForwardDiagonal))
+            {
+                e.Graphics.FillRectangle(br, content.ClientRectangle);
+            }
+        }
+
+        private Button CreateSidebarButton(string text, int top)
+        {
+            Button b = new Button()
+            {
+                Text = text,
+                Width = 176,
+                Height = 38,
+                Location = new Point(12, top),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = cSidebarBtn,
+                ForeColor = cTextPri,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(14, 0, 0, 0),
+                Cursor = Cursors.Hand
+            };
+            b.FlatAppearance.BorderSize = 0;
+            b.FlatAppearance.MouseOverBackColor = cSidebarBtnHover;
+            b.FlatAppearance.MouseDownBackColor = cAccentDown;
+            ApplyRoundRegion(b, 8);
+            b.Resize += (s, e) => ApplyRoundRegion(b, 8);
+            return b;
+        }
+
+        private Label CreateFieldLabel(string text, int x)
+        {
+            return new Label()
+            {
+                Text = text,
+                Location = new Point(x, 10),
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                ForeColor = cTextMut,
+                Font = new Font("Segoe UI", 7.5F, FontStyle.Bold)
+            };
+        }
+
+        private TextBox CreateDarkTextBox(int x, int width)
+        {
+            // TextBox bawaan WinForms tidak bisa rounded murni tanpa custom draw,
+            // jadi dibungkus tampilan flat-dark agar konsisten dgn tema (border solid gelap).
+            TextBox t = new TextBox()
+            {
+                Location = new Point(x, 30),
+                Width = width,
+                BackColor = cInputBg,
+                ForeColor = cTextPri,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Segoe UI", 9.5F)
+            };
+            return t;
+        }
+
+        private Button CreateActionButton(string text, int x, Color baseColor)
+        {
+            Button b = new Button()
+            {
+                Text = text,
+                Location = new Point(x, 28),
+                Width = 70,
+                Height = 28,
+                BackColor = baseColor,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            b.FlatAppearance.BorderSize = 0;
+            ApplyRoundRegion(b, 6);
+            return b;
+        }
+
+        private DataGridView CreateDarkGrid(int x, int y, int w, int h)
+        {
+            DataGridView g = new DataGridView()
+            {
+                Location = new Point(x, y),
+                Size = new Size(w, h),
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                BackgroundColor = cInputBg,
+                GridColor = cCardBord,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AllowUserToAddRows = false,
+                BorderStyle = BorderStyle.None,
+                RowHeadersVisible = false,
+                EnableHeadersVisualStyles = false,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
+            };
+
+            g.ColumnHeadersDefaultCellStyle.BackColor = cCard;
+            g.ColumnHeadersDefaultCellStyle.ForeColor = cTextPri;
+            g.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            g.ColumnHeadersDefaultCellStyle.SelectionBackColor = cCard;
+            g.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            g.ColumnHeadersHeight = 34;
+
+            g.DefaultCellStyle.BackColor = cInputBg;
+            g.DefaultCellStyle.ForeColor = cTextPri;
+            g.DefaultCellStyle.SelectionBackColor = cAccent;
+            g.DefaultCellStyle.SelectionForeColor = Color.White;
+            g.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+
+            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(13, 32, 64);
+            g.AlternatingRowsDefaultCellStyle.ForeColor = cTextPri;
+            g.AlternatingRowsDefaultCellStyle.SelectionBackColor = cAccent;
+            g.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
+
+            g.RowTemplate.Height = 30;
+
+            return g;
+        }
+
+        private static void ApplyRoundRegion(Control c, int radius)
+        {
+            if (c.Width <= 0 || c.Height <= 0) return;
+            Rectangle r = new Rectangle(0, 0, c.Width, c.Height);
+            c.Region = new Region(RoundedPath(r, radius));
+        }
+
+        private static GraphicsPath RoundedPath(Rectangle r, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(r.X, r.Y, d, d, 180, 90);
+            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        // Panel "card" rounded dark, dipakai untuk statistik & wrapper grid di dashboard
+        private Panel CreateCardPanel(int x, int y, int w, int h, Color bg)
+        {
+            Panel p = new Panel() { Location = new Point(x, y), Size = new Size(w, h), BackColor = Color.Transparent };
+            p.Paint += (s, e) =>
+            {
+                Graphics gfx = e.Graphics;
+                gfx.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, p.Width - 1, p.Height - 1);
+                using (GraphicsPath path = RoundedPath(rect, 10))
+                {
+                    using (SolidBrush fillBr = new SolidBrush(bg))
+                        gfx.FillPath(fillBr, path);
+                    using (Pen pen = new Pen(cCardBord, 1f))
+                        gfx.DrawPath(pen, path);
+                    p.Region = new Region(path);
+                }
+            };
+            return p;
         }
 
         // =============================================
@@ -196,7 +427,8 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "Ringkasan Informasi",
                 Font = new Font("Segoe UI", 13, FontStyle.Bold),
-                ForeColor = Color.DarkBlue,
+                ForeColor = cTextPri,
+                BackColor = Color.Transparent,
                 Location = new Point(20, 10),
                 AutoSize = true
             };
@@ -207,11 +439,15 @@ namespace SistemPenjualanDiecastNew
                 Text = "Refresh",
                 Location = new Point(650, 5),
                 Size = new Size(90, 30),
-                BackColor = Color.DarkBlue,
+                BackColor = cAccent,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9)
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
+            btnRefreshDash.FlatAppearance.BorderSize = 0;
+            btnRefreshDash.FlatAppearance.MouseOverBackColor = cAccentHover;
+            ApplyRoundRegion(btnRefreshDash, 6);
             btnRefreshDash.Click += (s, e) => LoadDashboard();
             content.Controls.Add(btnRefreshDash);
 
@@ -219,7 +455,8 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "Terakhir diperbarui: " + DateTime.Now.ToString("HH:mm:ss"),
                 Font = new Font("Segoe UI", 8),
-                ForeColor = Color.Gray,
+                ForeColor = cTextMut,
+                BackColor = Color.Transparent,
                 Location = new Point(20, 540),
                 AutoSize = true
             };
@@ -237,22 +474,40 @@ namespace SistemPenjualanDiecastNew
                     int belumBayar = TryGetCount(conn, "SELECT COUNT(*) FROM PEMBAYARAN WHERE status_bayar = 'Menunggu'");
                     int pesananBatal = TryGetCount(conn, "SELECT COUNT(*) FROM PESANAN WHERE status_pesanan = 'Dibatalkan'");
 
+                    // Warna teks tetap berbeda per kategori (untuk kontras info),
+                    // tapi background card sekarang gelap & seragam dengan tema.
                     var cards = new[]
                     {
-                        ("Total Produk",    totalProduk.ToString(),     Color.DarkBlue,            Color.AliceBlue),
-                        ("Pesanan Masuk",   pesananMasuk.ToString(),    Color.DarkOrange,          Color.FromArgb(255,245,230)),
-                        ("Tunggu Konfirm",  menungguKonfirm.ToString(), Color.Purple,              Color.FromArgb(245,230,255)),
-                        ("Pesanan Selesai", pesananSelesai.ToString(),  Color.DarkGreen,           Color.FromArgb(230,255,230)),
-                        ("Belum Bayar",     belumBayar.ToString(),      Color.FromArgb(180,100,0), Color.FromArgb(255,248,220)),
-                        ("Pembatalan",      pesananBatal.ToString(),    Color.DarkRed,             Color.FromArgb(255,230,230)),
+                        ("Total Produk",    totalProduk.ToString(),     Color.FromArgb(120, 170, 255)),
+                        ("Pesanan Masuk",   pesananMasuk.ToString(),    Color.FromArgb(255, 180, 110)),
+                        ("Tunggu Konfirm",  menungguKonfirm.ToString(), Color.FromArgb(210, 150, 255)),
+                        ("Pesanan Selesai", pesananSelesai.ToString(),  Color.FromArgb(120, 220, 150)),
+                        ("Belum Bayar",     belumBayar.ToString(),      Color.FromArgb(255, 210, 110)),
+                        ("Pembatalan",      pesananBatal.ToString(),    Color.FromArgb(255, 120, 130)),
                     };
 
                     int x = 20;
-                    foreach (var (judul, nilai, warnaTeks, warnaBg) in cards)
+                    foreach (var (judul, nilai, warnaTeks) in cards)
                     {
-                        Panel card = new Panel() { Size = new Size(145, 90), Location = new Point(x, 45), BackColor = warnaBg, BorderStyle = BorderStyle.FixedSingle };
-                        Label lNilai = new Label() { Text = nilai, Font = new Font("Segoe UI", 22, FontStyle.Bold), ForeColor = warnaTeks, Location = new Point(10, 8), AutoSize = true };
-                        Label lJudul = new Label() { Text = judul, Font = new Font("Segoe UI", 8), ForeColor = Color.Gray, Location = new Point(10, 58), AutoSize = true };
+                        Panel card = CreateCardPanel(x, 45, 145, 90, cCard);
+                        Label lNilai = new Label()
+                        {
+                            Text = nilai,
+                            Font = new Font("Segoe UI", 22, FontStyle.Bold),
+                            ForeColor = warnaTeks,
+                            BackColor = Color.Transparent,
+                            Location = new Point(10, 8),
+                            AutoSize = true
+                        };
+                        Label lJudul = new Label()
+                        {
+                            Text = judul,
+                            Font = new Font("Segoe UI", 8),
+                            ForeColor = cTextMut,
+                            BackColor = Color.Transparent,
+                            Location = new Point(10, 58),
+                            AutoSize = true
+                        };
                         card.Controls.AddRange(new Control[] { lNilai, lJudul });
                         content.Controls.Add(card);
                         x += 150;
@@ -269,24 +524,14 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "Pesanan Terbaru",
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                ForeColor = Color.DarkBlue,
+                ForeColor = cTextPri,
+                BackColor = Color.Transparent,
                 Location = new Point(20, 150),
                 AutoSize = true
             };
             content.Controls.Add(lblPesanan);
 
-            DataGridView gridPesanan = new DataGridView()
-            {
-                Location = new Point(20, 175),
-                Size = new Size(730, 155),
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AllowUserToAddRows = false,
-                RowHeadersVisible = false,
-                BorderStyle = BorderStyle.FixedSingle
-            };
+            DataGridView gridPesanan = CreateDarkGrid(20, 175, 730, 155);
 
             string sqlPesanan = @"
                 SELECT TOP 10
@@ -307,15 +552,16 @@ namespace SistemPenjualanDiecastNew
                 Color warna;
                 switch (status)
                 {
-                    case "Pending": warna = Color.FromArgb(255, 243, 205); break;
+                    case "Pending": warna = Color.FromArgb(70, 60, 25); break;
                     case "Dikonfirmasi":
-                    case "Diproses": warna = Color.FromArgb(207, 226, 255); break;
-                    case "Dikirim": warna = Color.FromArgb(255, 235, 180); break;
-                    case "Selesai": warna = Color.FromArgb(212, 237, 218); break;
-                    case "Dibatalkan": warna = Color.FromArgb(255, 220, 220); break;
-                    default: warna = Color.White; break;
+                    case "Diproses": warna = Color.FromArgb(25, 45, 80); break;
+                    case "Dikirim": warna = Color.FromArgb(70, 55, 15); break;
+                    case "Selesai": warna = Color.FromArgb(20, 55, 35); break;
+                    case "Dibatalkan": warna = Color.FromArgb(70, 25, 30); break;
+                    default: warna = cInputBg; break;
                 }
                 gridPesanan.Rows[e.RowIndex].DefaultCellStyle.BackColor = warna;
+                gridPesanan.Rows[e.RowIndex].DefaultCellStyle.ForeColor = cTextPri;
             };
             content.Controls.Add(gridPesanan);
 
@@ -324,24 +570,14 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "Pembayaran Menunggu Konfirmasi",
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                ForeColor = Color.Purple,
+                ForeColor = Color.FromArgb(210, 150, 255),
+                BackColor = Color.Transparent,
                 Location = new Point(20, 345),
                 AutoSize = true
             };
             content.Controls.Add(lblBayar);
 
-            DataGridView gridBayar = new DataGridView()
-            {
-                Location = new Point(20, 368),
-                Size = new Size(730, 155),
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AllowUserToAddRows = false,
-                RowHeadersVisible = false,
-                BorderStyle = BorderStyle.FixedSingle
-            };
+            DataGridView gridBayar = CreateDarkGrid(20, 368, 730, 155);
 
             string sqlBayar = @"
                 SELECT TOP 10
@@ -367,12 +603,13 @@ namespace SistemPenjualanDiecastNew
                 Color warna;
                 switch (status)
                 {
-                    case "Menunggu": warna = Color.FromArgb(255, 243, 205); break;
-                    case "Lunas": warna = Color.FromArgb(212, 237, 218); break;
-                    case "Gagal": warna = Color.FromArgb(255, 220, 220); break;
-                    default: warna = Color.White; break;
+                    case "Menunggu": warna = Color.FromArgb(70, 60, 25); break;
+                    case "Lunas": warna = Color.FromArgb(20, 55, 35); break;
+                    case "Gagal": warna = Color.FromArgb(70, 25, 30); break;
+                    default: warna = cInputBg; break;
                 }
                 gridBayar.Rows[e.RowIndex].DefaultCellStyle.BackColor = warna;
+                gridBayar.Rows[e.RowIndex].DefaultCellStyle.ForeColor = cTextPri;
             };
 
             content.Controls.Add(gridBayar);
@@ -567,36 +804,51 @@ namespace SistemPenjualanDiecastNew
         {
             content.Controls.Clear();
 
-            lblNama = new Label() { Text = "Nama Produk", Location = new Point(20, 10), AutoSize = true };
-            lblHarga = new Label() { Text = "Harga", Location = new Point(180, 10), AutoSize = true };
-            lblStok = new Label() { Text = "Stok", Location = new Point(310, 10), AutoSize = true };
-            lblJenis = new Label() { Text = "Merek", Location = new Point(440, 10), AutoSize = true };
+            lblNama = CreateFieldLabel("Nama Produk", 20);
+            lblHarga = CreateFieldLabel("Harga", 180);
+            lblStok = CreateFieldLabel("Stok", 310);
+            lblJenis = CreateFieldLabel("Merek", 440);
 
-            txtNamaProduk = new TextBox() { Location = new Point(20, 30), Width = 150 };
-            txtHarga = new TextBox() { Location = new Point(180, 30), Width = 120 };
-            txtStok = new TextBox() { Location = new Point(310, 30), Width = 120 };
-            txtJenisProduk = new TextBox() { Location = new Point(440, 30), Width = 120 };
+            txtNamaProduk = CreateDarkTextBox(20, 150);
+            txtHarga = CreateDarkTextBox(180, 120);
+            txtStok = CreateDarkTextBox(310, 120);
+            txtJenisProduk = CreateDarkTextBox(440, 120);
 
-            btnAdd = new Button() { Text = "Add", Location = new Point(580, 28), Width = 70 };
-            btnUpdate = new Button() { Text = "Update", Location = new Point(660, 28), Width = 70 };
-            btnDelete = new Button() { Text = "Delete", Location = new Point(740, 28), Width = 70 };
+            btnAdd = CreateActionButton("Add", 580, cAccent);
+            btnUpdate = CreateActionButton("Update", 660, Color.FromArgb(40, 130, 90));
+            btnDelete = CreateActionButton("Delete", 740, Color.FromArgb(150, 45, 55));
 
             btnAdd.Click += BtnAdd_Click;
             btnUpdate.Click += BtnUpdate_Click;
             btnDelete.Click += BtnDelete_Click;
 
             // Search Box
-            Label lblSearch = new Label() { Text = "Search:", Location = new Point(20, 58), AutoSize = true };
-            TextBox txtSearch = new TextBox() { Location = new Point(70, 55), Width = 200 };
+            Label lblSearch = new Label()
+            {
+                Text = "Search:",
+                Location = new Point(20, 58),
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                ForeColor = cTextMut
+            };
+            TextBox txtSearch = CreateDarkTextBox(70, 200);
+            txtSearch.Location = new Point(70, 55);
+
             Button btnSearch = new Button()
             {
                 Text = "Cari",
                 Location = new Point(280, 53),
                 Width = 70,
-                BackColor = Color.SteelBlue,
+                Height = 26,
+                BackColor = cAccent,
                 ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
+            btnSearch.FlatAppearance.BorderSize = 0;
+            btnSearch.FlatAppearance.MouseOverBackColor = cAccentHover;
+            ApplyRoundRegion(btnSearch, 6);
 
             // Label Total Produk
             Label lblTotalProduk = new Label()
@@ -605,28 +857,20 @@ namespace SistemPenjualanDiecastNew
                 Location = new Point(530, 60),
                 AutoSize = true,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                ForeColor = Color.DarkBlue
+                ForeColor = cTextPri,
+                BackColor = Color.Transparent
             };
 
             // Binding Navigator
             BindingNavigator navigator = new BindingNavigator(true)
             {
                 Location = new Point(20, 78),
-                Size = new Size(740, 25)
+                Size = new Size(740, 25),
+                BackColor = cCard
             };
 
             // GRID dibuat DULU sebelum subscribe event
-            grid = new DataGridView()
-            {
-                Location = new Point(20, 108),
-                Size = new Size(740, 390),
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AllowUserToAddRows = false,
-                RowHeadersVisible = false
-            };
+            grid = CreateDarkGrid(20, 108, 740, 390);
             grid.CellClick += Grid_CellClick;
 
             // Subscribe event SETELAH grid dibuat
@@ -663,9 +907,12 @@ namespace SistemPenjualanDiecastNew
         {
             content.Controls.Clear();
 
-            btnAdd = new Button() { Text = "Add", Location = new Point(20, 28), Width = 70 };
-            btnUpdate = new Button() { Text = "Update", Location = new Point(100, 28), Width = 70 };
-            btnDelete = new Button() { Text = "Delete", Location = new Point(180, 28), Width = 70 };
+            btnAdd = CreateActionButton("Add", 20, cAccent);
+            btnAdd.Location = new Point(20, 28);
+            btnUpdate = CreateActionButton("Update", 100, Color.FromArgb(40, 130, 90));
+            btnUpdate.Location = new Point(100, 28);
+            btnDelete = CreateActionButton("Delete", 180, Color.FromArgb(150, 45, 55));
+            btnDelete.Location = new Point(180, 28);
 
             btnAdd.Click += BtnAdd_Click;
             btnUpdate.Click += BtnUpdate_Click;
@@ -678,20 +925,12 @@ namespace SistemPenjualanDiecastNew
                 Location = new Point(530, 35),
                 AutoSize = true,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                ForeColor = Color.DarkBlue
+                ForeColor = cTextPri,
+                BackColor = Color.Transparent
             };
 
             // GRID dibuat DULU sebelum subscribe event
-            grid = new DataGridView()
-            {
-                Location = new Point(20, 80),
-                Size = new Size(740, 420),
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.White,
-                ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AllowUserToAddRows = false
-            };
+            grid = CreateDarkGrid(20, 80, 740, 420);
             grid.CellClick += Grid_CellClick;
 
             // Subscribe event SETELAH grid dibuat
@@ -848,6 +1087,7 @@ namespace SistemPenjualanDiecastNew
                         idProduk = Convert.ToInt32(drv.Row["id_produk"]);
                     else { MessageBox.Show("Gagal membaca ID produk!"); return; }
 
+
                     SqlCommand cmd = new SqlCommand("sp_UpdateProduk", conn);
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@id_produk", idProduk);
@@ -879,6 +1119,22 @@ namespace SistemPenjualanDiecastNew
                     MessageBox.Show("Update Error: " + ex.Message, "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+            }
+        }
+        private int GetIdAdmin()
+        {
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+                    SqlCommand cmd = new SqlCommand(
+                        "SELECT id_admin FROM ADMIN WHERE [username] = @u", conn);
+                    cmd.Parameters.AddWithValue("@u", userRole);
+                    object res = cmd.ExecuteScalar();
+                    return res != null ? Convert.ToInt32(res) : 1;
+                }
+                catch { return 1; }
             }
         }
 
@@ -1088,19 +1344,6 @@ namespace SistemPenjualanDiecastNew
             if (loginForm != null) loginForm.Show();
             else { Form1 f = new Form1(); f.Show(); }
             this.Close();
-        }
-
-        private Button CreateButton(string text, int top)
-        {
-            return new Button()
-            {
-                Text = text,
-                Width = 180,
-                Height = 40,
-                Location = new Point(10, top),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.White
-            };
         }
     }
 }

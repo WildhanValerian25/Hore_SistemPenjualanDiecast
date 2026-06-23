@@ -2,7 +2,10 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using CrystalDecisions.CrystalReports.Engine;
+using CrystalDecisions.Shared;
 
 namespace SistemPenjualanDiecastNew
 {
@@ -20,6 +23,19 @@ namespace SistemPenjualanDiecastNew
         private string _username;
         string connStr = @"Data Source=LAPTOP-24A5CGHI\WILDHANFIGHT;Initial Catalog=db_penjualan_diecast;Integrated Security=True";
 
+        // ── PALET WARNA (disamakan dengan form lain) ──
+        private readonly Color cBgDark = Color.FromArgb(8, 18, 38);
+        private readonly Color cBgMid = Color.FromArgb(11, 30, 62);
+        private readonly Color cCard = Color.FromArgb(14, 38, 78);
+        private readonly Color cCardBord = Color.FromArgb(25, 60, 110);
+        private readonly Color cAccent = Color.FromArgb(26, 86, 219);
+        private readonly Color cAccentHover = Color.FromArgb(35, 100, 235);
+        private readonly Color cAccentDown = Color.FromArgb(15, 60, 170);
+        private readonly Color cInputBg = Color.FromArgb(10, 26, 55);
+        private readonly Color cInputBrd = Color.FromArgb(40, 70, 130);
+        private readonly Color cTextPri = Color.FromArgb(230, 238, 255);
+        private readonly Color cTextMut = Color.FromArgb(100, 130, 180);
+
         public FormRiwayatPesanan(string username)
         {
             _username = username;
@@ -27,12 +43,23 @@ namespace SistemPenjualanDiecastNew
             this.Text = "Riwayat Pesanan Saya";
             this.Size = new Size(900, 640);
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.BackColor = Color.White;
+            this.BackColor = cBgDark;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
+            this.Font = new Font("Segoe UI", 9.5F);
+            this.Paint += Form_Paint;
 
             BuildUI();
             LoadPesanan();
+        }
+
+        private void Form_Paint(object sender, PaintEventArgs e)
+        {
+            using (LinearGradientBrush br = new LinearGradientBrush(
+                this.ClientRectangle, cBgDark, cBgMid, LinearGradientMode.ForwardDiagonal))
+            {
+                e.Graphics.FillRectangle(br, this.ClientRectangle);
+            }
         }
 
         private void BuildUI()
@@ -41,7 +68,8 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "Riwayat Pesanan Saya",
                 Font = new Font("Segoe UI", 13, FontStyle.Bold),
-                ForeColor = Color.DarkBlue,
+                ForeColor = cTextPri,
+                BackColor = Color.Transparent,
                 Location = new Point(20, 15),
                 AutoSize = true
             };
@@ -51,14 +79,19 @@ namespace SistemPenjualanDiecastNew
                 Text = "Filter Status:",
                 Location = new Point(20, 58),
                 AutoSize = true,
-                Font = new Font("Segoe UI", 9)
+                Font = new Font("Segoe UI", 9),
+                BackColor = Color.Transparent,
+                ForeColor = cTextMut
             };
 
             cmbFilter = new ComboBox()
             {
                 Location = new Point(110, 55),
                 Size = new Size(180, 22),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = cInputBg,
+                ForeColor = cTextPri
             };
             cmbFilter.Items.AddRange(new string[] {
                 "Semua", "Pending", "Dikonfirmasi", "Diproses", "Dikirim", "Selesai", "Dibatalkan"
@@ -70,7 +103,8 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "Pilih pesanan berstatus 'Pending' lalu klik BAYAR SEKARANG.",
                 Font = new Font("Segoe UI", 8),
-                ForeColor = Color.DimGray,
+                ForeColor = cTextMut,
+                BackColor = Color.Transparent,
                 Location = new Point(20, 85),
                 AutoSize = true
             };
@@ -81,27 +115,51 @@ namespace SistemPenjualanDiecastNew
                 BindingSource = _bindingSource,
                 Location = new Point(20, 108),
                 Size = new Size(840, 25),
-                BackColor = Color.DarkBlue,
-                ForeColor = Color.White
+                BackColor = cCard,
+                ForeColor = cTextPri
             };
             foreach (ToolStripItem item in navigator.Items)
-                item.ForeColor = Color.White;
+                item.ForeColor = cTextPri;
 
             // ✅ DataGridView dihubungkan ke BindingSource
             dgvPesanan = new DataGridView()
             {
                 Location = new Point(20, 138),
                 Size = new Size(840, 330),
-                BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.FixedSingle,
+                BackgroundColor = cInputBg,
+                GridColor = cCardBord,
+                BorderStyle = BorderStyle.None,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
                 AllowUserToAddRows = false,
                 ReadOnly = true,
                 RowHeadersVisible = false,
+                EnableHeadersVisualStyles = false,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                Font = new Font("Segoe UI", 9F),
                 DataSource = _bindingSource   // ✅ Binding
             };
+
+            dgvPesanan.ColumnHeadersDefaultCellStyle.BackColor = cCard;
+            dgvPesanan.ColumnHeadersDefaultCellStyle.ForeColor = cTextPri;
+            dgvPesanan.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            dgvPesanan.ColumnHeadersDefaultCellStyle.SelectionBackColor = cCard;
+            dgvPesanan.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgvPesanan.ColumnHeadersHeight = 34;
+
+            dgvPesanan.DefaultCellStyle.BackColor = cInputBg;
+            dgvPesanan.DefaultCellStyle.ForeColor = cTextPri;
+            dgvPesanan.DefaultCellStyle.SelectionBackColor = cAccent;
+            dgvPesanan.DefaultCellStyle.SelectionForeColor = Color.White;
+
+            dgvPesanan.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(13, 32, 64);
+            dgvPesanan.AlternatingRowsDefaultCellStyle.ForeColor = cTextPri;
+            dgvPesanan.AlternatingRowsDefaultCellStyle.SelectionBackColor = cAccent;
+            dgvPesanan.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
+
+            dgvPesanan.RowTemplate.Height = 30;
+
             dgvPesanan.CellFormatting += DgvPesanan_CellFormatting;
             dgvPesanan.SelectionChanged += DgvPesanan_SelectionChanged;
 
@@ -109,48 +167,22 @@ namespace SistemPenjualanDiecastNew
             {
                 Text = "",
                 Font = new Font("Segoe UI", 8),
-                ForeColor = Color.Gray,
+                ForeColor = cTextMut,
+                BackColor = Color.Transparent,
                 Location = new Point(20, 475),
                 AutoSize = true
             };
 
-            btnBayar = new Button()
-            {
-                Text = "BAYAR SEKARANG",
-                Location = new Point(20, 498),
-                Size = new Size(160, 42),
-                BackColor = Color.DarkGreen,
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat,
-                Enabled = false
-            };
+            btnBayar = CreateActionButton("BAYAR SEKARANG", 20, Color.FromArgb(35, 130, 90));
+            btnBayar.Enabled = false;
             btnBayar.Click += BtnBayar_Click;
 
-            btnLihatResi = new Button()
-            {
-                Text = "LIHAT NOMOR RESI",
-                Location = new Point(190, 498),
-                Size = new Size(160, 42),
-                BackColor = Color.DarkOrange,
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat,
-                Enabled = false
-            };
+            btnLihatResi = CreateActionButton("LIHAT NOMOR RESI", 190, Color.FromArgb(200, 130, 30));
+            btnLihatResi.Enabled = false;
             btnLihatResi.Click += BtnLihatResi_Click;
 
-            btnPesananDiterima = new Button()
-            {
-                Text = "PESANAN DITERIMA",
-                Location = new Point(360, 498),
-                Size = new Size(160, 42),
-                BackColor = Color.FromArgb(0, 153, 76),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat,
-                Enabled = false
-            };
+            btnPesananDiterima = CreateActionButton("PESANAN DITERIMA", 360, Color.FromArgb(20, 140, 90));
+            btnPesananDiterima.Enabled = false;
             btnPesananDiterima.Click += BtnPesananDiterima_Click;
 
             btnRefresh = new Button()
@@ -158,11 +190,15 @@ namespace SistemPenjualanDiecastNew
                 Text = "REFRESH",
                 Location = new Point(530, 498),
                 Size = new Size(110, 42),
-                BackColor = Color.SteelBlue,
+                BackColor = cAccent,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold)
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
+            btnRefresh.FlatAppearance.BorderSize = 0;
+            btnRefresh.FlatAppearance.MouseOverBackColor = cAccentHover;
+            ApplyRoundRegion(btnRefresh, 8);
             btnRefresh.Click += (s, e) => LoadPesanan();
 
             this.Controls.AddRange(new Control[] {
@@ -178,6 +214,49 @@ namespace SistemPenjualanDiecastNew
             };
         }
 
+        // ════════════════════════════════════════════════════════
+        // HELPERS VISUAL
+        // ════════════════════════════════════════════════════════
+        private Button CreateActionButton(string text, int x, Color baseColor)
+        {
+            Button b = new Button()
+            {
+                Text = text,
+                Location = new Point(x, 498),
+                Size = new Size(160, 42),
+                BackColor = baseColor,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            b.FlatAppearance.BorderSize = 0;
+            ApplyRoundRegion(b, 8);
+            return b;
+        }
+
+        private static GraphicsPath RoundedPath(Rectangle r, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            int d = radius * 2;
+            path.AddArc(r.X, r.Y, d, d, 180, 90);
+            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        private static void ApplyRoundRegion(Control c, int radius)
+        {
+            if (c.Width <= 0 || c.Height <= 0) return;
+            Rectangle r = new Rectangle(0, 0, c.Width, c.Height);
+            c.Region = new Region(RoundedPath(r, radius));
+        }
+
+        // ════════════════════════════════════════════════════════
+        // LOGIKA — sekarang memanggil Stored Procedure
+        // ════════════════════════════════════════════════════════
         private void LoadPesanan()
         {
             using (SqlConnection conn = new SqlConnection(connStr))
@@ -186,38 +265,22 @@ namespace SistemPenjualanDiecastNew
                 {
                     conn.Open();
                     string filter = cmbFilter.SelectedItem.ToString();
-                    string where = filter == "Semua" ? "" : "AND ps.status_pesanan = @status";
 
-                    string query = $@"
-                        SELECT
-                            ps.id_pesanan                                        AS [ID Pesanan],
-                            pr.nama_produk                                       AS [Produk],
-                            dp.jumlah                                            AS [Jumlah],
-                            'Rp ' + FORMAT(ps.total_harga,'N0','id-ID')          AS [Total],
-                            pb.metode                                            AS [Metode Bayar],
-                            pb.status_bayar                                      AS [Status Bayar],
-                            ps.status_pesanan                                    AS [Status Pesanan],
-                            ISNULL(ps.nomor_resi,'-')                            AS [No Resi],
-                            FORMAT(ps.tanggal_pesan,'dd/MM/yyyy HH:mm')          AS [Tanggal Pesan]
-                        FROM PESANAN ps
-                        JOIN PELANGGAN      pl ON ps.id_pelanggan = pl.id_pelanggan
-                        JOIN DETAIL_PESANAN dp ON ps.id_pesanan   = dp.id_pesanan
-                        JOIN PRODUK         pr ON dp.id_produk    = pr.id_produk
-                        LEFT JOIN PEMBAYARAN pb ON ps.id_pesanan  = pb.id_pesanan
-                        WHERE pl.[username] = @username {where}
-                        ORDER BY ps.tanggal_pesan DESC";
+                    using (SqlCommand cmd = new SqlCommand("sp_GetRiwayatPesanan", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@username", _username);
+                        // "Semua" -> kirim NULL ke SP supaya tidak difilter
+                        cmd.Parameters.AddWithValue("@status",
+                            filter == "Semua" ? (object)DBNull.Value : filter);
 
-                    SqlCommand cmd = new SqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@username", _username);
-                    if (filter != "Semua")
-                        cmd.Parameters.AddWithValue("@status", filter);
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
 
-                    SqlDataAdapter da = new SqlDataAdapter(cmd);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-
-                    // ✅ Set ke BindingSource
-                    _bindingSource.DataSource = dt;
+                        // ✅ Set ke BindingSource
+                        _bindingSource.DataSource = dt;
+                    }
 
                     btnBayar.Enabled = false;
                     btnLihatResi.Enabled = false;
@@ -238,15 +301,16 @@ namespace SistemPenjualanDiecastNew
             Color warna;
             switch (status)
             {
-                case "Pending": warna = Color.FromArgb(255, 243, 205); break;
+                case "Pending": warna = Color.FromArgb(70, 60, 25); break;
                 case "Dikonfirmasi":
-                case "Diproses": warna = Color.FromArgb(207, 226, 255); break;
-                case "Dikirim": warna = Color.FromArgb(255, 235, 180); break;
-                case "Selesai": warna = Color.FromArgb(212, 237, 218); break;
-                case "Dibatalkan": warna = Color.FromArgb(255, 220, 220); break;
-                default: warna = Color.White; break;
+                case "Diproses": warna = Color.FromArgb(25, 45, 80); break;
+                case "Dikirim": warna = Color.FromArgb(70, 55, 15); break;
+                case "Selesai": warna = Color.FromArgb(20, 55, 35); break;
+                case "Dibatalkan": warna = Color.FromArgb(70, 25, 30); break;
+                default: warna = cInputBg; break;
             }
             dgvPesanan.Rows[e.RowIndex].DefaultCellStyle.BackColor = warna;
+            dgvPesanan.Rows[e.RowIndex].DefaultCellStyle.ForeColor = cTextPri;
         }
 
         private void DgvPesanan_SelectionChanged(object sender, EventArgs e)
@@ -297,28 +361,23 @@ namespace SistemPenjualanDiecastNew
             {
                 using (SqlConnection conn = new SqlConnection(connStr))
                 {
-                    SqlTransaction trans = null;
                     try
                     {
                         conn.Open();
-                        trans = conn.BeginTransaction();
 
-                        new SqlCommand("UPDATE PESANAN SET status_pesanan='Selesai' WHERE id_pesanan=@id",
-                            conn, trans)
-                        { Parameters = { new SqlParameter("@id", idPesanan) } }.ExecuteNonQuery();
+                        using (SqlCommand cmd = new SqlCommand("sp_KonfirmasiPesananDiterima", conn))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@id_pesanan", idPesanan);
+                            cmd.ExecuteNonQuery();
+                        }
 
-                        new SqlCommand("UPDATE PEMBAYARAN SET status_bayar='Lunas', tanggal_bayar=GETDATE() WHERE id_pesanan=@id",
-                            conn, trans)
-                        { Parameters = { new SqlParameter("@id", idPesanan) } }.ExecuteNonQuery();
-
-                        trans.Commit();
                         MessageBox.Show("Pesanan dikonfirmasi selesai! Terima kasih.",
                             "Selesai", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadPesanan();
                     }
                     catch (Exception ex)
                     {
-                        trans?.Rollback();
                         MessageBox.Show("Gagal: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
@@ -346,23 +405,49 @@ namespace SistemPenjualanDiecastNew
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
-                BackColor = Color.White
+                BackColor = cCard
             };
 
-            Panel hdr = new Panel() { Dock = DockStyle.Top, Height = 45, BackColor = Color.DarkOrange };
-            hdr.Controls.Add(new Label() { Text = "Info Pengiriman", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.White, Location = new Point(15, 10), AutoSize = true });
+            Panel hdr = new Panel() { Dock = DockStyle.Top, Height = 45, BackColor = cAccent };
+            hdr.Controls.Add(new Label() { Text = "Info Pengiriman", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.White, BackColor = Color.Transparent, Location = new Point(15, 10), AutoSize = true });
 
             popup.Controls.AddRange(new Control[] {
                 hdr,
-                new Label() { Text = $"ID Pesanan : #{idPesanan}", Font = new Font("Segoe UI",10), Location = new Point(20,55), AutoSize=true },
-                new Label() { Text = $"Produk     : {produk}",     Font = new Font("Segoe UI",10), Location = new Point(20,80), AutoSize=true },
-                new Label() { Text = "Nomor Resi :",               Font = new Font("Segoe UI",9), ForeColor=Color.Gray, Location = new Point(20,110), AutoSize=true },
-                new Label() { Text = noResi, Font = new Font("Segoe UI",15,FontStyle.Bold), ForeColor=Color.DarkOrange, Location = new Point(20,130), AutoSize=true },
+                new Label() { Text = $"ID Pesanan : #{idPesanan}", Font = new Font("Segoe UI",10), ForeColor = cTextPri, BackColor = Color.Transparent, Location = new Point(20,55), AutoSize=true },
+                new Label() { Text = $"Produk     : {produk}",     Font = new Font("Segoe UI",10), ForeColor = cTextPri, BackColor = Color.Transparent, Location = new Point(20,80), AutoSize=true },
+                new Label() { Text = "Nomor Resi :",               Font = new Font("Segoe UI",9), ForeColor = cTextMut, BackColor = Color.Transparent, Location = new Point(20,110), AutoSize=true },
+                new Label() { Text = noResi, Font = new Font("Segoe UI",15,FontStyle.Bold), ForeColor = Color.FromArgb(255, 190, 110), BackColor = Color.Transparent, Location = new Point(20,130), AutoSize=true },
             });
 
-            Button btnSalin = new Button() { Text = "Salin Resi", Location = new Point(20, 185), Size = new Size(130, 35), BackColor = Color.DarkOrange, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
+            Button btnSalin = new Button()
+            {
+                Text = "Salin Resi",
+                Location = new Point(20, 185),
+                Size = new Size(130, 35),
+                BackColor = Color.FromArgb(200, 130, 30),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnSalin.FlatAppearance.BorderSize = 0;
+            ApplyRoundRegion(btnSalin, 8);
             btnSalin.Click += (s, ev) => { Clipboard.SetText(noResi); MessageBox.Show("Nomor resi disalin!"); };
-            Button btnTutup = new Button() { Text = "Tutup", Location = new Point(160, 185), Size = new Size(90, 35), FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.OK };
+
+            Button btnTutup = new Button()
+            {
+                Text = "Tutup",
+                Location = new Point(160, 185),
+                Size = new Size(90, 35),
+                FlatStyle = FlatStyle.Flat,
+                DialogResult = DialogResult.OK,
+                BackColor = Color.FromArgb(20, 50, 100),
+                ForeColor = cTextPri,
+                Cursor = Cursors.Hand
+            };
+            btnTutup.FlatAppearance.BorderSize = 1;
+            btnTutup.FlatAppearance.BorderColor = cInputBrd;
+            ApplyRoundRegion(btnTutup, 8);
 
             popup.Controls.AddRange(new Control[] { btnSalin, btnTutup });
             popup.ShowDialog();
@@ -375,10 +460,14 @@ namespace SistemPenjualanDiecastNew
                 try
                 {
                     conn.Open();
-                    SqlCommand cmd = new SqlCommand("SELECT total_harga FROM PESANAN WHERE id_pesanan=@id", conn);
-                    cmd.Parameters.AddWithValue("@id", idPesanan);
-                    object r = cmd.ExecuteScalar();
-                    return r != null ? Convert.ToDecimal(r) : 0;
+
+                    using (SqlCommand cmd = new SqlCommand("sp_GetTotalHargaPesanan", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id_pesanan", idPesanan);
+                        object r = cmd.ExecuteScalar();
+                        return r != null ? Convert.ToDecimal(r) : 0;
+                    }
                 }
                 catch { return 0; }
             }

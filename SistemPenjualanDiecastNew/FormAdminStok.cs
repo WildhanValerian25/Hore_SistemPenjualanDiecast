@@ -145,6 +145,12 @@ namespace SistemPenjualanDiecastNew
             };
         }
 
+        // =============================================
+        // ✅ PERBAIKAN — Sekarang memanggil Stored Procedure
+        //    sp_GetStokProduk. Sekaligus memperbaiki bug filter
+        //    keyword yang dulu ditambahkan setelah ORDER BY
+        //    (menyebabkan error SQL saat ada kata kunci).
+        // =============================================
         private void LoadStok(string keyword = "")
         {
             using (SqlConnection conn = new SqlConnection(connStr))
@@ -152,31 +158,20 @@ namespace SistemPenjualanDiecastNew
                 try
                 {
                     conn.Open();
-                    string query = @"SELECT 
-                    id_produk                               AS [ID],
-                    nama_produk                             AS [Nama Produk],
-                    merek                                   AS [Merek],
-                    'Rp ' + FORMAT(harga, 'N0', 'id-ID')   AS [Harga],
-                    stok                                    AS [Stok],
-                    status_stok                             AS [Status Stok]
-                    FROM vw_StokProduk
-                    ORDER BY stok ASC";
 
-                    if (!string.IsNullOrEmpty(keyword))
-                        query += " AND (nama_produk LIKE @kw OR merek LIKE @kw)";
+                    using (SqlCommand cmd = new SqlCommand("sp_GetStokProduk", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@keyword",
+                            string.IsNullOrEmpty(keyword) ? (object)DBNull.Value : keyword);
 
-                    query += " ORDER BY stok ASC";
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
 
-                    SqlCommand cmd = new SqlCommand(query, conn);
-                    if (!string.IsNullOrEmpty(keyword))
-                        cmd.Parameters.AddWithValue("@kw", "%" + keyword + "%");
-
-                    SqlDataAdapter da = new SqlDataAdapter(cmd);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-
-                    // ✅ Set ke BindingSource
-                    _bindingSource.DataSource = dt;
+                        // ✅ Set ke BindingSource
+                        _bindingSource.DataSource = dt;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -210,6 +205,12 @@ namespace SistemPenjualanDiecastNew
             UbahStok(false);
         }
 
+        // =============================================
+        // ✅ PERBAIKAN — Sekarang memanggil Stored Procedure
+        //    sp_UbahStokProduk. Validasi stok cukup (saat
+        //    kurangi) dilakukan ulang di server dengan row-lock,
+        //    jadi tetap aman walau data di grid sudah basi.
+        // =============================================
         private void UbahStok(bool tambah)
         {
             if (dgvStok.SelectedRows.Count == 0)
@@ -266,19 +267,35 @@ namespace SistemPenjualanDiecastNew
                     try
                     {
                         conn.Open();
-                        string sql = tambah
-                            ? "UPDATE PRODUK SET stok = stok + @jml WHERE id_produk = @id"
-                            : "UPDATE PRODUK SET stok = stok - @jml WHERE id_produk = @id";
 
-                        SqlCommand cmd = new SqlCommand(sql, conn);
-                        cmd.Parameters.AddWithValue("@jml", jumlah);
-                        cmd.Parameters.AddWithValue("@id", idProduk);
-                        cmd.ExecuteNonQuery();
+                        using (SqlCommand cmd = new SqlCommand("sp_UbahStokProduk", conn))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@id_produk", idProduk);
+                            cmd.Parameters.AddWithValue("@jumlah", jumlah);
+                            cmd.Parameters.AddWithValue("@tambah", tambah);
 
-                        MessageBox.Show(
-                            $"Stok '{namaProduk}' berhasil {(tambah ? "ditambah" : "dikurangi")} {jumlah}!",
-                            "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        LoadStok(txtCari.Text.Trim());
+                            SqlParameter pHasil = new SqlParameter("@hasil", SqlDbType.Int)
+                            { Direction = ParameterDirection.Output };
+                            cmd.Parameters.Add(pHasil);
+
+                            cmd.ExecuteNonQuery();
+
+                            if (Convert.ToInt32(pHasil.Value) == 1)
+                            {
+                                MessageBox.Show(
+                                    $"Stok '{namaProduk}' berhasil {(tambah ? "ditambah" : "dikurangi")} {jumlah}!",
+                                    "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                LoadStok(txtCari.Text.Trim());
+                            }
+                            else
+                            {
+                                MessageBox.Show(
+                                    "Gagal ubah stok! Produk tidak ditemukan atau stok tidak cukup.",
+                                    "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                LoadStok(txtCari.Text.Trim());
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {

@@ -209,90 +209,64 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
-            private void BtnKirimBukti_Click(object sender, EventArgs e)
+        private void BtnKirimBukti_Click(object sender, EventArgs e)
+        {
+            // COD — langsung konfirmasi tanpa cek bukti
+            if (_metode == "COD")
             {
-                // COD — langsung konfirmasi tanpa cek bukti
-                if (_metode == "COD")
-                {
-                    DialogResult konfirmasi = MessageBox.Show(
-                        $"Konfirmasi pesanan COD?\n\n" +
-                        $"ID Pesanan : #{_idPesanan}\n" +
-                        $"Total      : Rp {_totalHarga:N0}\n\n" +
-                        $"Pembayaran dilakukan saat barang tiba.",
-                        "Konfirmasi COD",
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                DialogResult konfirmasi = MessageBox.Show(
+                    $"Konfirmasi pesanan COD?\n\n" +
+                    $"ID Pesanan : #{_idPesanan}\n" +
+                    $"Total      : Rp {_totalHarga:N0}\n\n" +
+                    $"Pembayaran dilakukan saat barang tiba.",
+                    "Konfirmasi COD",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
-                    if (konfirmasi != DialogResult.Yes) return;
+                if (konfirmasi != DialogResult.Yes) return;
 
-                    UpdateStatusBayar(null);
-                    return;
-                }
-
-                // Non-COD wajib upload bukti
-                if (string.IsNullOrEmpty(_buktiPath))
-                {
-                    MessageBox.Show("Silakan upload bukti pembayaran terlebih dahulu!", "Peringatan",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                UpdateStatusBayar(_buktiPath);
+                UpdateStatusBayar(null);
+                return;
             }
 
-            // =============================================
-            // ✅ PERBAIKAN UTAMA — Simpan ke bukti_bayar (VARBINARY)
-            //    bukan bukti_transfer (NVARCHAR nama file)
-            // =============================================
-            private void UpdateStatusBayar(string buktiPath)
+            // Non-COD wajib upload bukti
+            if (string.IsNullOrEmpty(_buktiPath))
             {
-                using (SqlConnection conn = new SqlConnection(connStr))
-                {
-                    try
+                MessageBox.Show("Silakan upload bukti pembayaran terlebih dahulu!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            UpdateStatusBayar(_buktiPath);
+        }
+
+        // =============================================
+        // ✅ PERBAIKAN — Sekarang memanggil Stored Procedure
+        //    sp_KonfirmasiPembayaran, bukan raw query lagi.
+        //    SP ini sekaligus mengurus update PEMBAYARAN
+        //    dan PESANAN dalam satu transaksi di sisi DB.
+        // =============================================
+        private void UpdateStatusBayar(string buktiPath)
+        {
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                try
                 {
                     conn.Open();
 
-                    SqlCommand cmd;
-
-                    if (!string.IsNullOrEmpty(buktiPath))
+                    using (SqlCommand cmd = new SqlCommand("sp_KonfirmasiPembayaran", conn))
                     {
-                        // ✅ Baca file gambar sebagai byte[] lalu simpan ke kolom bukti_bayar (VARBINARY)
-                        byte[] imgBytes = File.ReadAllBytes(buktiPath);
+                        cmd.CommandType = CommandType.StoredProcedure;
 
-                        string query = @"UPDATE PEMBAYARAN 
-                                         SET status_bayar  = 'Menunggu',
-                                             bukti_bayar   = @bukti,
-                                             tanggal_bayar = GETDATE()
-                                         WHERE id_pesanan  = @id";
+                        cmd.Parameters.AddWithValue("@id_pesanan", _idPesanan);
 
-                        cmd = new SqlCommand(query, conn);
-                        cmd.Parameters.AddWithValue("@id", _idPesanan);
-                        // ✅ Kirim sebagai SqlDbType.VarBinary agar tidak salah tipe
-                        SqlParameter paramBukti = new SqlParameter("@bukti", SqlDbType.VarBinary, -1);
-                        paramBukti.Value = imgBytes;
+                        SqlParameter paramBukti = new SqlParameter("@bukti_bayar", SqlDbType.VarBinary, -1);
+                        paramBukti.Value = !string.IsNullOrEmpty(buktiPath)
+                            ? (object)File.ReadAllBytes(buktiPath)   // Non-COD: kirim byte[] gambar
+                            : DBNull.Value;                          // COD: kirim NULL
                         cmd.Parameters.Add(paramBukti);
+
+                        cmd.ExecuteNonQuery();
                     }
-                    else
-                    {
-                        // COD — tidak ada bukti, set NULL
-                        string query = @"UPDATE PEMBAYARAN 
-                                         SET status_bayar  = 'Menunggu',
-                                             bukti_bayar   = NULL,
-                                             tanggal_bayar = GETDATE()
-                                         WHERE id_pesanan  = @id";
-
-                        cmd = new SqlCommand(query, conn);
-                        cmd.Parameters.AddWithValue("@id", _idPesanan);
-                    }
-
-                    cmd.ExecuteNonQuery();
-
-                    // Update status pesanan → Dikonfirmasi
-                    string qPesanan = @"UPDATE PESANAN 
-                                        SET status_pesanan = 'Dikonfirmasi'
-                                        WHERE id_pesanan   = @id";
-                    SqlCommand cmdPesanan = new SqlCommand(qPesanan, conn);
-                    cmdPesanan.Parameters.AddWithValue("@id", _idPesanan);
-                    cmdPesanan.ExecuteNonQuery();
 
                     string pesan = _metode == "COD"
                         ? "Pesanan COD berhasil dikonfirmasi!\nAdmin akan segera memproses pesanan Anda."

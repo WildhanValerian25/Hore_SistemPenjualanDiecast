@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Data.SqlClient;
@@ -146,7 +147,7 @@ namespace SistemPenjualanDiecastNew
             });
         }
 
-        // ✅ Auto-load alamat dari database
+        // ✅ Auto-load alamat dari database — sekarang lewat SP
         private void LoadAlamatUser()
         {
             using (SqlConnection conn = new SqlConnection(connStr))
@@ -154,12 +155,16 @@ namespace SistemPenjualanDiecastNew
                 try
                 {
                     conn.Open();
-                    string query = "SELECT alamat FROM PELANGGAN WHERE [username] = @u";
-                    SqlCommand cmd = new SqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@u", _username);
-                    object result = cmd.ExecuteScalar();
-                    if (result != null && result != DBNull.Value)
-                        txtAlamat.Text = result.ToString();
+
+                    using (SqlCommand cmd = new SqlCommand("sp_GetAlamatPelanggan", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@username", _username);
+
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                            txtAlamat.Text = result.ToString();
+                    }
                 }
                 catch { }
             }
@@ -179,6 +184,13 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
+        // =============================================
+        // ✅ PERBAIKAN — Sekarang memanggil Stored Procedure
+        //    sp_BuatPesananBaru. Seluruh proses (cek pelanggan,
+        //    cek+kurangi stok, insert PESANAN, DETAIL_PESANAN,
+        //    PEMBAYARAN) ditangani dalam 1 transaksi di DB,
+        //    menggantikan SqlTransaction manual di C#.
+        // =============================================
         private void BtnKonfirmasi_Click(object sender, EventArgs e)
         {
             // Validasi jumlah
@@ -204,63 +216,36 @@ namespace SistemPenjualanDiecastNew
                 return;
             }
 
-            decimal totalHarga = jumlah * _harga;
             string metode = cmbMetode.SelectedItem.ToString();
 
             using (SqlConnection conn = new SqlConnection(connStr))
             {
-                SqlTransaction trans = null;
                 try
                 {
                     conn.Open();
-                    trans = conn.BeginTransaction(); // ✅ Pakai transaksi agar aman
 
-                    // 1. Ambil id_pelanggan dari username
-                    string qId = "SELECT id_pelanggan FROM PELANGGAN WHERE [username] = @u";
-                    SqlCommand cmdId = new SqlCommand(qId, conn, trans);
-                    cmdId.Parameters.AddWithValue("@u", _username);
-                    int idPelanggan = (int)cmdId.ExecuteScalar();
+                    int idPesananBaru = 0;
+                    decimal totalHarga = 0;
 
-                    // 2. Insert ke tabel PESANAN
-                    string qPesanan = @"INSERT INTO PESANAN 
-                                        (id_pelanggan, total_harga, status_pesanan, alamat_kirim)
-                                        OUTPUT INSERTED.id_pesanan
-                                        VALUES (@idp, @total, 'Pending', @alamat)";
-                    SqlCommand cmdPesanan = new SqlCommand(qPesanan, conn, trans);
-                    cmdPesanan.Parameters.AddWithValue("@idp", idPelanggan);
-                    cmdPesanan.Parameters.AddWithValue("@total", totalHarga);
-                    cmdPesanan.Parameters.AddWithValue("@alamat", txtAlamat.Text.Trim());
-                    int idPesanan = (int)cmdPesanan.ExecuteScalar();
+                    using (SqlCommand cmd = new SqlCommand("sp_BuatPesananBaru", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@username", _username);
+                        cmd.Parameters.AddWithValue("@id_produk", _idProduk);
+                        cmd.Parameters.AddWithValue("@jumlah", jumlah);
+                        cmd.Parameters.AddWithValue("@harga_satuan", _harga);
+                        cmd.Parameters.AddWithValue("@alamat", txtAlamat.Text.Trim());
+                        cmd.Parameters.AddWithValue("@metode", metode);
 
-                    // 3. Insert ke tabel DETAIL_PESANAN
-                    string qDetail = @"INSERT INTO DETAIL_PESANAN 
-                                       (id_pesanan, id_produk, jumlah, harga_satuan)
-                                       VALUES (@idpes, @idprod, @jml, @harga)";
-                    SqlCommand cmdDetail = new SqlCommand(qDetail, conn, trans);
-                    cmdDetail.Parameters.AddWithValue("@idpes", idPesanan);
-                    cmdDetail.Parameters.AddWithValue("@idprod", _idProduk);
-                    cmdDetail.Parameters.AddWithValue("@jml", jumlah);
-                    cmdDetail.Parameters.AddWithValue("@harga", _harga);
-                    cmdDetail.ExecuteNonQuery();
-
-                    // 4. Insert ke tabel PEMBAYARAN
-                    string qBayar = @"INSERT INTO PEMBAYARAN 
-                                      (id_pesanan, metode, jumlah_bayar, status_bayar)
-                                      VALUES (@idpes, @metode, @total, 'Menunggu')";
-                    SqlCommand cmdBayar = new SqlCommand(qBayar, conn, trans);
-                    cmdBayar.Parameters.AddWithValue("@idpes", idPesanan);
-                    cmdBayar.Parameters.AddWithValue("@metode", metode);
-                    cmdBayar.Parameters.AddWithValue("@total", totalHarga);
-                    cmdBayar.ExecuteNonQuery();
-
-                    // 5. ✅ Kurangi stok di tabel PRODUK
-                    string qStok = "UPDATE PRODUK SET stok = stok - @jml WHERE id_produk = @idprod";
-                    SqlCommand cmdStok = new SqlCommand(qStok, conn, trans);
-                    cmdStok.Parameters.AddWithValue("@jml", jumlah);
-                    cmdStok.Parameters.AddWithValue("@idprod", _idProduk);
-                    cmdStok.ExecuteNonQuery();
-
-                    trans.Commit(); // ✅ Semua berhasil, simpan ke database
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                idPesananBaru = Convert.ToInt32(reader["id_pesanan"]);
+                                totalHarga = Convert.ToDecimal(reader["total_harga"]);
+                            }
+                        }
+                    }
 
                     MessageBox.Show(
                         $"Pesanan berhasil dibuat!\n\n" +
@@ -277,7 +262,8 @@ namespace SistemPenjualanDiecastNew
                 }
                 catch (Exception ex)
                 {
-                    trans?.Rollback(); // ✅ Gagal? Batalkan semua perubahan
+                    // RAISERROR dari SP (pelanggan tidak ditemukan / stok tidak cukup)
+                    // akan masuk ke sini lewat ex.Message
                     MessageBox.Show("Gagal membuat pesanan: " + ex.Message, "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
