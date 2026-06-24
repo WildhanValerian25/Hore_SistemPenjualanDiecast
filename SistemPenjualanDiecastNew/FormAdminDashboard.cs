@@ -254,8 +254,6 @@ namespace SistemPenjualanDiecastNew
 
         private TextBox CreateDarkTextBox(int x, int width)
         {
-            // TextBox bawaan WinForms tidak bisa rounded murni tanpa custom draw,
-            // jadi dibungkus tampilan flat-dark agar konsisten dgn tema (border solid gelap).
             TextBox t = new TextBox()
             {
                 Location = new Point(x, 30),
@@ -474,8 +472,6 @@ namespace SistemPenjualanDiecastNew
                     int belumBayar = TryGetCount(conn, "SELECT COUNT(*) FROM PEMBAYARAN WHERE status_bayar = 'Menunggu'");
                     int pesananBatal = TryGetCount(conn, "SELECT COUNT(*) FROM PESANAN WHERE status_pesanan = 'Dibatalkan'");
 
-                    // Warna teks tetap berbeda per kategori (untuk kontras info),
-                    // tapi background card sekarang gelap & seragam dengan tema.
                     var cards = new[]
                     {
                         ("Total Produk",    totalProduk.ToString(),     Color.FromArgb(120, 170, 255)),
@@ -672,69 +668,72 @@ namespace SistemPenjualanDiecastNew
 
         // =============================================
         // ✅ PERBAIKAN UTAMA — Reset Data dari Backup
+        // Sekarang memanggil stored procedure sp_ResetDataProduk
+        // (lihat sp_ResetDataProduk_Fixed.sql) yang sudah menangani:
+        //   - Semua FK anak (ULASAN, ITEM_KERANJANG, PEMBAYARAN,
+        //     DETAIL_PESANAN, PESANAN) dihapus dengan urutan benar
+        //   - TRUNCATE TABLE PRODUK (bukan DELETE) supaya tidak
+        //     terhalang trigger trg_CegahHapusProdukAktif yang
+        //     mengubah DELETE menjadi soft delete (is_aktif = 0)
         // =============================================
         private void BtnResetData_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show(
-                "Reset semua data PRODUK ke kondisi awal?\nData yang ditambahkan akan hilang.",
+                "Reset semua data PRODUK ke kondisi awal?\n" +
+                "Semua data transaksi (Pesanan, Pembayaran, Ulasan, Keranjang) " +
+                "juga akan ikut dikosongkan.\nTindakan ini tidak bisa dibatalkan.",
                 "Konfirmasi Reset",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
 
-            try
+            using (SqlConnection conn = new SqlConnection(connStr))
             {
-                using (SqlConnection conn = new SqlConnection(connStr))
+                try
                 {
                     conn.Open();
 
-                    string query = @"
-                IF OBJECT_ID('dbo.PRODUK_Backup') IS NOT NULL
-                BEGIN
-                    -- ✅ STEP 1: Hapus child table dulu (yang punya FK ke PRODUK)
-                    -- Simpan sementara jika ada backup detail pesanan
-                    -- Hapus DETAIL_PESANAN yang id_produk-nya ada di PRODUK
-                    DELETE FROM dbo.DETAIL_PESANAN
-                    WHERE id_produk IN (SELECT id_produk FROM dbo.PRODUK);
+                    SqlCommand cmd = new SqlCommand("sp_ResetDataProduk", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
 
-                    -- ✅ STEP 2: Baru hapus PRODUK (sudah tidak ada FK yang menggantung)
-                    DELETE FROM dbo.PRODUK;
-
-                    -- ✅ STEP 3: Aktifkan IDENTITY_INSERT lalu restore dari backup
-                    SET IDENTITY_INSERT dbo.PRODUK ON;
-
-                    INSERT INTO dbo.PRODUK
-                        (id_produk, id_admin, nama_produk, merek, harga, stok, is_aktif, created_at)
-                    SELECT
-                        id_produk, id_admin, nama_produk, merek, harga, stok, is_aktif, created_at
-                    FROM dbo.PRODUK_Backup;
-
-                    SET IDENTITY_INSERT dbo.PRODUK OFF;
-
-                    -- ✅ STEP 4: Reseed identity counter
-                    DECLARE @maxId INT = (SELECT ISNULL(MAX(id_produk), 0) FROM dbo.PRODUK);
-                    DBCC CHECKIDENT ('dbo.PRODUK', RESEED, @maxId);
-                END
-                ELSE
-                BEGIN
-                    RAISERROR('Tabel PRODUK_Backup tidak ditemukan!', 16, 1);
-                END";
-
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    SqlParameter pHasil = new SqlParameter("@hasil", SqlDbType.Int)
                     {
-                        cmd.ExecuteNonQuery();
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(pHasil);
+
+                    cmd.ExecuteNonQuery();
+
+                    int hasil = Convert.ToInt32(pHasil.Value);
+
+                    switch (hasil)
+                    {
+                        case 1:
+                            MessageBox.Show("Data berhasil direset ke kondisi awal!", "Berhasil",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            break;
+
+                        case 0:
+                            MessageBox.Show(
+                                "Reset gagal: tabel PRODUK_Backup tidak ditemukan.\n" +
+                                "Pastikan backup awal sudah dibuat sebelum demo.",
+                                "Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            break;
+
+                        default: // -1 atau nilai tak terduga lainnya
+                            MessageBox.Show("Reset gagal karena terjadi error pada server.", "Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            break;
                     }
                 }
-
-                MessageBox.Show("Data berhasil direset!", "Berhasil",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                if (isDashboardActive) LoadDashboard();
-                else LoadProduk();
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Reset gagal: " + ex.Message, "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Reset gagal: " + ex.Message, "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+
+            if (isDashboardActive) LoadDashboard();
+            else LoadProduk();
         }
 
         // =============================================
