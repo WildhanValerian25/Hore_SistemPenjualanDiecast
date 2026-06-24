@@ -11,17 +11,15 @@ namespace SistemPenjualanDiecastNew
     {
         Label lblTitle, lblInfo;
         DataGridView dgvPesanan;
-        Button btnBayar, btnRefresh, btnLihatResi, btnPesananDiterima;
+        Button btnBayar, btnRefresh, btnLihatResi, btnPesananDiterima, btnBatalkan; // ✅ tambah btnBatalkan
         ComboBox cmbFilter;
         Label lblFilter, lblInfoData;
 
-        // ✅ BindingSource
         private BindingSource _bindingSource = new BindingSource();
 
         private string _username;
         string connStr = Koneksi.GetConnectionString();
 
-        // ── PALET WARNA (disamakan dengan form lain) ──
         private readonly Color cBgDark = Color.FromArgb(8, 18, 38);
         private readonly Color cBgMid = Color.FromArgb(11, 30, 62);
         private readonly Color cCard = Color.FromArgb(14, 38, 78);
@@ -39,7 +37,7 @@ namespace SistemPenjualanDiecastNew
             _username = username;
 
             this.Text = "Riwayat Pesanan Saya";
-            this.Size = new Size(900, 640);
+            this.Size = new Size(900, 680);   // ✅ sedikit lebih tinggi untuk tombol baru
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = cBgDark;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -107,7 +105,6 @@ namespace SistemPenjualanDiecastNew
                 AutoSize = true
             };
 
-            // ✅ BindingNavigator
             BindingNavigator navigator = new BindingNavigator(true)
             {
                 BindingSource = _bindingSource,
@@ -119,7 +116,6 @@ namespace SistemPenjualanDiecastNew
             foreach (ToolStripItem item in navigator.Items)
                 item.ForeColor = cTextPri;
 
-            // ✅ DataGridView dihubungkan ke BindingSource
             dgvPesanan = new DataGridView()
             {
                 Location = new Point(20, 138),
@@ -136,7 +132,7 @@ namespace SistemPenjualanDiecastNew
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 Font = new Font("Segoe UI", 9F),
-                DataSource = _bindingSource   // ✅ Binding
+                DataSource = _bindingSource
             };
 
             dgvPesanan.ColumnHeadersDefaultCellStyle.BackColor = cCard;
@@ -157,7 +153,6 @@ namespace SistemPenjualanDiecastNew
             dgvPesanan.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White;
 
             dgvPesanan.RowTemplate.Height = 30;
-
             dgvPesanan.CellFormatting += DgvPesanan_CellFormatting;
             dgvPesanan.SelectionChanged += DgvPesanan_SelectionChanged;
 
@@ -171,15 +166,19 @@ namespace SistemPenjualanDiecastNew
                 AutoSize = true
             };
 
-            btnBayar = CreateActionButton("BAYAR SEKARANG", 20, Color.FromArgb(35, 130, 90));
+            // ── Baris tombol 1 (y=498) ──────────────────────────────
+            btnBayar = CreateActionButton("BAYAR SEKARANG", 20,
+                Color.FromArgb(35, 130, 90), 498);
             btnBayar.Enabled = false;
             btnBayar.Click += BtnBayar_Click;
 
-            btnLihatResi = CreateActionButton("LIHAT NOMOR RESI", 190, Color.FromArgb(200, 130, 30));
+            btnLihatResi = CreateActionButton("LIHAT NOMOR RESI", 190,
+                Color.FromArgb(200, 130, 30), 498);
             btnLihatResi.Enabled = false;
             btnLihatResi.Click += BtnLihatResi_Click;
 
-            btnPesananDiterima = CreateActionButton("PESANAN DITERIMA", 360, Color.FromArgb(20, 140, 90));
+            btnPesananDiterima = CreateActionButton("PESANAN DITERIMA", 360,
+                Color.FromArgb(20, 140, 90), 498);
             btnPesananDiterima.Enabled = false;
             btnPesananDiterima.Click += BtnPesananDiterima_Click;
 
@@ -199,13 +198,19 @@ namespace SistemPenjualanDiecastNew
             ApplyRoundRegion(btnRefresh, 8);
             btnRefresh.Click += (s, e) => LoadPesanan();
 
+            // ── Baris tombol 2 (y=548): tombol BATALKAN ✅ ──────────
+            btnBatalkan = CreateActionButton("BATALKAN PESANAN", 20,
+                Color.FromArgb(180, 40, 40), 548);
+            btnBatalkan.Enabled = false;
+            btnBatalkan.Click += BtnBatalkan_Click;
+
             this.Controls.AddRange(new Control[] {
                 lblTitle, lblFilter, cmbFilter, lblInfo,
                 navigator, dgvPesanan, lblInfoData,
-                btnBayar, btnLihatResi, btnPesananDiterima, btnRefresh
+                btnBayar, btnLihatResi, btnPesananDiterima, btnRefresh,
+                btnBatalkan   // ✅
             });
 
-            // ✅ Update info jumlah data
             _bindingSource.ListChanged += (s, e) =>
             {
                 lblInfoData.Text = $"Total {_bindingSource.Count} pesanan ditemukan";
@@ -215,12 +220,12 @@ namespace SistemPenjualanDiecastNew
         // ════════════════════════════════════════════════════════
         // HELPERS VISUAL
         // ════════════════════════════════════════════════════════
-        private Button CreateActionButton(string text, int x, Color baseColor)
+        private Button CreateActionButton(string text, int x, Color baseColor, int y = 498)
         {
             Button b = new Button()
             {
                 Text = text,
-                Location = new Point(x, 498),
+                Location = new Point(x, y),
                 Size = new Size(160, 42),
                 BackColor = baseColor,
                 ForeColor = Color.White,
@@ -248,12 +253,11 @@ namespace SistemPenjualanDiecastNew
         private static void ApplyRoundRegion(Control c, int radius)
         {
             if (c.Width <= 0 || c.Height <= 0) return;
-            Rectangle r = new Rectangle(0, 0, c.Width, c.Height);
-            c.Region = new Region(RoundedPath(r, radius));
+            c.Region = new Region(RoundedPath(new Rectangle(0, 0, c.Width, c.Height), radius));
         }
 
         // ════════════════════════════════════════════════════════
-        // LOGIKA — sekarang memanggil Stored Procedure
+        // LOAD DATA via SP
         // ════════════════════════════════════════════════════════
         private void LoadPesanan()
         {
@@ -268,54 +272,38 @@ namespace SistemPenjualanDiecastNew
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         cmd.Parameters.AddWithValue("@username", _username);
-                        // "Semua" -> kirim NULL ke SP supaya tidak difilter
                         cmd.Parameters.AddWithValue("@status",
                             filter == "Semua" ? (object)DBNull.Value : filter);
 
-                        SqlDataAdapter da = new SqlDataAdapter(cmd);
                         DataTable dt = new DataTable();
-                        da.Fill(dt);
-
-                        // ✅ Set ke BindingSource
+                        new SqlDataAdapter(cmd).Fill(dt);
                         _bindingSource.DataSource = dt;
                     }
 
                     btnBayar.Enabled = false;
                     btnLihatResi.Enabled = false;
                     btnPesananDiterima.Enabled = false;
+                    btnBatalkan.Enabled = false;  // ✅ reset
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Gagal memuat pesanan: " + ex.Message, "Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Gagal memuat pesanan: " + ex.Message,
+                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
 
-        private void DgvPesanan_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-            string status = dgvPesanan.Rows[e.RowIndex].Cells["Status Pesanan"]?.Value?.ToString();
-            Color warna;
-            switch (status)
-            {
-                case "Pending": warna = Color.FromArgb(70, 60, 25); break;
-                case "Dikonfirmasi":
-                case "Diproses": warna = Color.FromArgb(25, 45, 80); break;
-                case "Dikirim": warna = Color.FromArgb(70, 55, 15); break;
-                case "Selesai": warna = Color.FromArgb(20, 55, 35); break;
-                case "Dibatalkan": warna = Color.FromArgb(70, 25, 30); break;
-                default: warna = cInputBg; break;
-            }
-            dgvPesanan.Rows[e.RowIndex].DefaultCellStyle.BackColor = warna;
-            dgvPesanan.Rows[e.RowIndex].DefaultCellStyle.ForeColor = cTextPri;
-        }
-
+        // ════════════════════════════════════════════════════════
+        // SELECTION CHANGED — aktifkan/nonaktifkan tombol
+        // ════════════════════════════════════════════════════════
         private void DgvPesanan_SelectionChanged(object sender, EventArgs e)
         {
             if (dgvPesanan.SelectedRows.Count == 0)
             {
-                btnBayar.Enabled = btnLihatResi.Enabled = btnPesananDiterima.Enabled = false;
+                btnBayar.Enabled = false;
+                btnLihatResi.Enabled = false;
+                btnPesananDiterima.Enabled = false;
+                btnBatalkan.Enabled = false;
                 return;
             }
 
@@ -326,8 +314,99 @@ namespace SistemPenjualanDiecastNew
             btnBayar.Enabled = statusPesanan == "Pending" && statusBayar == "Menunggu";
             btnLihatResi.Enabled = (statusPesanan == "Dikirim" || statusPesanan == "Selesai") && noResi != "-";
             btnPesananDiterima.Enabled = statusPesanan == "Dikirim";
+
+            // ✅ Batalkan hanya aktif saat Pending atau Dikonfirmasi
+            btnBatalkan.Enabled = statusPesanan == "Pending" || statusPesanan == "Dikonfirmasi";
         }
 
+        // ════════════════════════════════════════════════════════
+        // TOMBOL: BATALKAN PESANAN ✅
+        // ════════════════════════════════════════════════════════
+        private void BtnBatalkan_Click(object sender, EventArgs e)
+        {
+            if (dgvPesanan.SelectedRows.Count == 0) return;
+
+            int idPesanan = Convert.ToInt32(dgvPesanan.SelectedRows[0].Cells["ID Pesanan"].Value);
+            string produk = dgvPesanan.SelectedRows[0].Cells["Produk"].Value?.ToString();
+            string status = dgvPesanan.SelectedRows[0].Cells["Status Pesanan"].Value?.ToString();
+
+            // Konfirmasi ke user
+            DialogResult konfirmasi = MessageBox.Show(
+                $"Yakin ingin membatalkan pesanan ini?\n\n" +
+                $"ID Pesanan : #{idPesanan}\n" +
+                $"Produk     : {produk}\n" +
+                $"Status     : {status}\n\n" +
+                $"Stok akan dikembalikan otomatis.",
+                "Konfirmasi Batalkan Pesanan",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (konfirmasi != DialogResult.Yes) return;
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                try
+                {
+                    conn.Open();
+
+                    using (SqlCommand cmd = new SqlCommand("sp_BatalkanPesanan", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("@id_pesanan", idPesanan);
+                        cmd.Parameters.AddWithValue("@username", _username);
+
+                        SqlParameter pHasil = new SqlParameter("@hasil", SqlDbType.Int)
+                        {
+                            Direction = ParameterDirection.Output
+                        };
+                        cmd.Parameters.Add(pHasil);
+
+                        cmd.ExecuteNonQuery();
+
+                        int hasil = Convert.ToInt32(pHasil.Value);
+
+                        switch (hasil)
+                        {
+                            case 1:
+                                MessageBox.Show(
+                                    "Pesanan berhasil dibatalkan. Stok telah dikembalikan.",
+                                    "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                LoadPesanan();
+                                break;
+
+                            case 0:
+                                MessageBox.Show(
+                                    "Pesanan tidak ditemukan atau bukan milik Anda.",
+                                    "Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                break;
+
+                            case -1:
+                                MessageBox.Show(
+                                    $"Pesanan dengan status '{status}' tidak dapat dibatalkan.\n" +
+                                    "Hanya pesanan berstatus Pending atau Dikonfirmasi yang bisa dibatalkan.",
+                                    "Tidak Bisa Dibatalkan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                break;
+
+                            default:
+                                MessageBox.Show(
+                                    "Terjadi kesalahan saat membatalkan pesanan.",
+                                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error: " + ex.Message,
+                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════
+        // TOMBOL: BAYAR SEKARANG
+        // ════════════════════════════════════════════════════════
         private void BtnBayar_Click(object sender, EventArgs e)
         {
             if (dgvPesanan.SelectedRows.Count == 0) return;
@@ -345,6 +424,9 @@ namespace SistemPenjualanDiecastNew
             }
         }
 
+        // ════════════════════════════════════════════════════════
+        // TOMBOL: PESANAN DITERIMA
+        // ════════════════════════════════════════════════════════
         private void BtnPesananDiterima_Click(object sender, EventArgs e)
         {
             if (dgvPesanan.SelectedRows.Count == 0) return;
@@ -362,26 +444,28 @@ namespace SistemPenjualanDiecastNew
                     try
                     {
                         conn.Open();
-
                         using (SqlCommand cmd = new SqlCommand("sp_KonfirmasiPesananDiterima", conn))
                         {
                             cmd.CommandType = CommandType.StoredProcedure;
                             cmd.Parameters.AddWithValue("@id_pesanan", idPesanan);
                             cmd.ExecuteNonQuery();
                         }
-
                         MessageBox.Show("Pesanan dikonfirmasi selesai! Terima kasih.",
                             "Selesai", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadPesanan();
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show("Gagal: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("Gagal: " + ex.Message,
+                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
         }
 
+        // ════════════════════════════════════════════════════════
+        // TOMBOL: LIHAT NOMOR RESI
+        // ════════════════════════════════════════════════════════
         private void BtnLihatResi_Click(object sender, EventArgs e)
         {
             if (dgvPesanan.SelectedRows.Count == 0) return;
@@ -392,7 +476,8 @@ namespace SistemPenjualanDiecastNew
 
             if (string.IsNullOrEmpty(noResi) || noResi == "-")
             {
-                MessageBox.Show("Nomor resi belum tersedia.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Nomor resi belum tersedia.", "Info",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -407,14 +492,22 @@ namespace SistemPenjualanDiecastNew
             };
 
             Panel hdr = new Panel() { Dock = DockStyle.Top, Height = 45, BackColor = cAccent };
-            hdr.Controls.Add(new Label() { Text = "Info Pengiriman", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.White, BackColor = Color.Transparent, Location = new Point(15, 10), AutoSize = true });
+            hdr.Controls.Add(new Label()
+            {
+                Text = "Info Pengiriman",
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Location = new Point(15, 10),
+                AutoSize = true
+            });
 
             popup.Controls.AddRange(new Control[] {
                 hdr,
-                new Label() { Text = $"ID Pesanan : #{idPesanan}", Font = new Font("Segoe UI",10), ForeColor = cTextPri, BackColor = Color.Transparent, Location = new Point(20,55), AutoSize=true },
-                new Label() { Text = $"Produk     : {produk}",     Font = new Font("Segoe UI",10), ForeColor = cTextPri, BackColor = Color.Transparent, Location = new Point(20,80), AutoSize=true },
-                new Label() { Text = "Nomor Resi :",               Font = new Font("Segoe UI",9), ForeColor = cTextMut, BackColor = Color.Transparent, Location = new Point(20,110), AutoSize=true },
-                new Label() { Text = noResi, Font = new Font("Segoe UI",15,FontStyle.Bold), ForeColor = Color.FromArgb(255, 190, 110), BackColor = Color.Transparent, Location = new Point(20,130), AutoSize=true },
+                new Label() { Text = $"ID Pesanan : #{idPesanan}", Font = new Font("Segoe UI",10), ForeColor = cTextPri, BackColor = Color.Transparent, Location = new Point(20,55),  AutoSize=true },
+                new Label() { Text = $"Produk     : {produk}",     Font = new Font("Segoe UI",10), ForeColor = cTextPri, BackColor = Color.Transparent, Location = new Point(20,80),  AutoSize=true },
+                new Label() { Text = "Nomor Resi :",               Font = new Font("Segoe UI", 9), ForeColor = cTextMut, BackColor = Color.Transparent, Location = new Point(20,110), AutoSize=true },
+                new Label() { Text = noResi, Font = new Font("Segoe UI",15,FontStyle.Bold), ForeColor = Color.FromArgb(255,190,110), BackColor = Color.Transparent, Location = new Point(20,130), AutoSize=true },
             });
 
             Button btnSalin = new Button()
@@ -430,7 +523,11 @@ namespace SistemPenjualanDiecastNew
             };
             btnSalin.FlatAppearance.BorderSize = 0;
             ApplyRoundRegion(btnSalin, 8);
-            btnSalin.Click += (s, ev) => { Clipboard.SetText(noResi); MessageBox.Show("Nomor resi disalin!"); };
+            btnSalin.Click += (s, ev) =>
+            {
+                Clipboard.SetText(noResi);
+                MessageBox.Show("Nomor resi disalin!");
+            };
 
             Button btnTutup = new Button()
             {
@@ -451,6 +548,31 @@ namespace SistemPenjualanDiecastNew
             popup.ShowDialog();
         }
 
+        // ════════════════════════════════════════════════════════
+        // HELPER: CELL FORMATTING (warna baris per status)
+        // ════════════════════════════════════════════════════════
+        private void DgvPesanan_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            string status = dgvPesanan.Rows[e.RowIndex].Cells["Status Pesanan"]?.Value?.ToString();
+            Color warna;
+            switch (status)
+            {
+                case "Pending": warna = Color.FromArgb(70, 60, 25); break;
+                case "Dikonfirmasi":
+                case "Diproses": warna = Color.FromArgb(25, 45, 80); break;
+                case "Dikirim": warna = Color.FromArgb(70, 55, 15); break;
+                case "Selesai": warna = Color.FromArgb(20, 55, 35); break;
+                case "Dibatalkan": warna = Color.FromArgb(70, 25, 30); break;
+                default: warna = cInputBg; break;
+            }
+            dgvPesanan.Rows[e.RowIndex].DefaultCellStyle.BackColor = warna;
+            dgvPesanan.Rows[e.RowIndex].DefaultCellStyle.ForeColor = cTextPri;
+        }
+
+        // ════════════════════════════════════════════════════════
+        // HELPER: AMBIL TOTAL HARGA via SP
+        // ════════════════════════════════════════════════════════
         private decimal GetTotalHarga(int idPesanan)
         {
             using (SqlConnection conn = new SqlConnection(connStr))
@@ -458,7 +580,6 @@ namespace SistemPenjualanDiecastNew
                 try
                 {
                     conn.Open();
-
                     using (SqlCommand cmd = new SqlCommand("sp_GetTotalHargaPesanan", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
